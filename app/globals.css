@@ -1,0 +1,377 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 204 100% 40%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 204 100% 40%;
+    --radius: 12px;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 0 0% 95%;
+    --card: 24 9.8% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 204 100% 40%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 85.7% 97.3%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 204 100% 40%;
+  }
+}
+
+body {
+  font-family: "Playfair Display", serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  background-image: radial-gradient(rgba(212, 175, 55, 0.1) 1px, transparent 1px),
+    radial-gradient(rgba(212, 175, 55, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Добавляем поддержку safe-area для iOS */
+.safe-area-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0));
+}
+
+.safe-area-top {
+  padding-top: calc(0.75rem + env(safe-area-inset-top, 0));
+}
+
+/* Оптимизация для тач-интерфейсов */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Улучшение отзывчивости для мобильных устройств */
+@media (max-width: 640px) {
+  .game-board-cell {
+    font-size: 1.5rem; /* text-2xl */
+  }
+}
+
+/* Минимальные размеры для интерактивных элементов */
+@layer components {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Применяем класс touch-target к кнопкам и ссылкам на мобильных устройствах */
+@media (max-width: 640px) {
+  button,
+  a {
+    @apply touch-target;
+  }
+}
+
+/* Предотвращение ошибок анимаций */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Безопасные анимации для модальных окон */
+.modal-enter {
+  animation: modalEnter 0.2s ease-out;
+}
+
+.modal-exit {
+  animation: modalExit 0.2s ease-in;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Предотвращение мерцания при загрузке */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Улучшение стабильности для игровой доски */
+.game-board-cell {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Предотвращение проблем с переполнением */
+.overflow-safe {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Безопасные переходы */
+.safe-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Предотвращение проблем с z-index */
+.z-safe {
+  z-index: 1;
+}
+
+.z-modal {
+  z-index: 50;
+}
+
+.z-overlay {
+  z-index: 40;
+}
+
+/* Улучшение доступности */
+.focus-visible:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Предотвращение проблем с прокруткой на мобильных устройствах */
+.no-scroll {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Безопасные размеры для модальных окон */
+.modal-safe {
+  max-height: calc(100vh - 2rem);
+  max-width: calc(100vw - 2rem);
+}
+
+/* Предотвращение проблем с анимациями на устройствах с ограниченными возможностями */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.casino-table {
+  background-color: #0c4c1c; /* Casino table green */
+  box-shadow: 0 0 0 8px #1a1a1a, 0 0 0 9px #d4af37, 0 0 20px rgba(212, 175, 55, 0.5);
+  border-radius: 16px;
+}
+
+.casino-chip {
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.casino-chip::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+}
+
+.gold-text {
+  color: #d4af37;
+  text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+.card-felt {
+  background-color: #0c4c1c;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.gold-border {
+  border: 1px solid #d4af37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Apple-inspired styles */
+.apple-blur {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.apple-card {
+  @apply rounded-xl bg-white/90 shadow-sm;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.apple-button {
+  @apply rounded-full bg-primary px-5 py-2.5 text-white transition-all hover:bg-primary/90 active:scale-95;
+}
+
+.apple-input {
+  @apply rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20;
+}
+
+.apple-chip {
+  @apply inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground;
+}
+
+.apple-gradient {
+  background: linear-gradient(135deg, #0077ed 0%, #00a3ff 100%);
+}
+
+.apple-shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.game-board-cell {
+  @apply flex aspect-square items-center justify-center rounded-2xl bg-secondary text-3xl font-bold transition-all;
+}
+
+.game-board-cell-x {
+  @apply text-primary;
+}
+
+.game-board-cell-o {
+  @apply text-destructive;
+}
+
+.trc20-address {
+  @apply rounded-lg bg-secondary p-2 font-mono text-xs text-secondary-foreground;
+}
+
+/* Добавляем анимации для улучшения UX */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Добавить анимацию для ячеек */
+@keyframes scale {
+  0% {
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Оптимизация анимаций для устройств с предпочтением уменьшенного движения */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Оптимизация для жестов */
+.swipe-container {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipe-item {
+  scroll-snap-align: start;
+}
