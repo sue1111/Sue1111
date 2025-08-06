@@ -86,11 +86,13 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
   const [lastMoveTime, setLastMoveTime] = useState<number>(0);
   const [isGamePaused, setIsGamePaused] = useState<boolean>(false);
   const [pauseData, setPauseData] = useState<any>(null);
+  const [pendingMove, setPendingMove] = useState<{ index: number; timestamp: number } | null>(null);
   const [systemSettings, setSystemSettings] = useState({
     minBet: 1,
     maxBet: 100,
     botWinPercentage: 50 // Добавляем вероятность победы бота
   })
+  const [aiNickname, setAiNickname] = useState<string | null>(null)
   const { toast } = useToast();
 
   // Загружаем системные настройки
@@ -155,18 +157,64 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         parsedBoard = Array(9).fill(null);
       }
       
-      console.log("Итоговая доска для использования:", parsedBoard);
+      // Сохраняем ходы игрока, если есть ожидаемый ход
+      let finalBoard = [...parsedBoard];
+      if (pendingMove && (Date.now() - pendingMove.timestamp) < 8000) { // Увеличиваем таймаут до 8 секунд
+        console.log(`🎯 Pending move detected at index ${pendingMove.index}, preserving player move`);
+        const playerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
+        
+        // Проверяем, что ячейка в данных с сервера пуста или содержит ход игрока
+        if (finalBoard[pendingMove.index] === null || finalBoard[pendingMove.index] === playerSymbol) {
+          finalBoard[pendingMove.index] = playerSymbol;
+          console.log(`🎯 Preserved player move: ${playerSymbol} at index ${pendingMove.index}`);
+        } else {
+          console.log(`🎯 Server already has move at index ${pendingMove.index}: ${finalBoard[pendingMove.index]}`);
+        }
+      }
+      
+      console.log("Итоговая доска для использования:", finalBoard);
 
       // Устанавливаем состояние игры
       let players = game.players;
       let status = game.status || "waiting";
       
-      // Добавляем AI игрока, если его нет
-      if (!game.player_o || !game.players?.O) {
+      // Простая логика: если у нас есть сохраненный ник ИИ, всегда используем его
+      if (aiNickname && (game.players?.O?.id?.startsWith('ai_') || game.players?.O?.id === "ai" || !game.players?.O)) {
+        console.log(`🤖 Using fixed AI nickname: ${aiNickname}`)
         players = {
           ...game.players,
-          O: { id: "ai", username: "ИИ Оппонент", avatar: null }
+          O: { 
+            id: game.players?.O?.id || `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, 
+            username: aiNickname, 
+            avatar: null 
+          }
         };
+      } else if (!game.players?.O || !game.players.O.username || game.players.O.username === "ИИ Оппонент" || game.players.O.username === "Opponent") {
+        // Генерируем ник только если у нас его еще нет
+        const fakeUsernames = [
+          'alex_krv', 'maria.sun', 'johnny99', 's4rah_luv', 'mike.xd', 'emma_jay', 'david.zero', 'lisa.mint',
+          'tom.dev', 'anna_waves', 'chr1s.b', 'so_phiee', 'paulie777', 'k8lyn_', 'markov.ai', 'julz_01',
+          'ryan.chill', 'em1ly_x', 'jameson.tv', 'olivianova', 'dani.codes', 'sofia.23', 'matt.vibes', 'ava_rain',
+          'xtopher_', 'isa.bella', 'drewhype', 'miami.mia', 'jshua88', 'charl0tte_', 'n8han.io', 'ame.lia'
+        ];
+        const username = fakeUsernames[Math.floor(Math.random() * fakeUsernames.length)];
+        setAiNickname(username); // Сохраняем навсегда
+        console.log(`🤖 Generated and fixed AI nickname: ${username}`)
+        
+        players = {
+          ...game.players,
+          O: { 
+            id: game.players?.O?.id || `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, 
+            username: username, 
+            avatar: null 
+          }
+        };
+      } else {
+        // Если у игрока уже есть нормальный ник и у нас нет сохраненного, сохраняем его
+        if (!aiNickname && game.players.O.username !== "ИИ Оппонент" && game.players.O.username !== "Opponent") {
+          setAiNickname(game.players.O.username);
+          console.log(`🤖 Fixed AI nickname from server: ${game.players.O.username}`)
+        }
       }
       
       // Используем статус с сервера, но добавляем дополнительную проверку
@@ -186,7 +234,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       const newGameState = {
         id: game.id,
-        board: parsedBoard,
+        board: finalBoard, // Используем финальную доску с сохраненными ходами
         currentPlayer: game.currentPlayer || game.current_player || "X",
         players,
         status,
@@ -204,7 +252,14 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         console.error("Error setting game state:", error)
       }
       
-      // Переходим на экран игры
+      // Если игра завершена, не переходим на экран игры
+      if (status === "completed" || status === "draw") {
+        console.log("Game is completed, staying on current screen");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Переходим на экран игры только для активных игр
       setCurrentScreen("game");
       setIsLoading(false);
     } catch (error) {
@@ -213,7 +268,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       setCurrentScreen("game");
       setIsLoading(false);
     }
-  }, [userData]);
+  }, [userData, pendingMove, aiNickname]);
 
   // Создание мультиплеер игры с ожиданием
   const handleCreateMultiplayerGame = useCallback(
@@ -442,13 +497,26 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       const initialDelay = setTimeout(() => {
         const interval = setInterval(async () => {
           try {
+            // Проверяем, есть ли активный ход или ИИ думает
+            const hasPendingMove = pendingMove && (Date.now() - pendingMove.timestamp) < 10000 // 10 секунд таймаут
+            const timeSinceLastMove = Date.now() - lastMoveTime
+            const shouldSkipPolling = timeSinceLastMove < 5000 || isAITinking || hasPendingMove
+            
+            if (shouldSkipPolling) {
+              console.log("🔧 Skipping polling:", {
+                timeSinceLastMove,
+                isAITinking,
+                hasPendingMove,
+                pendingMoveAge: pendingMove ? Date.now() - pendingMove.timestamp : null
+              })
+              return
+            }
+            
             console.log("🔧 Polling game state...")
             const response = await fetch(`/api/games/${gameState.id}`)
             if (response.ok) {
               const gameData = await response.json()
               console.log("🔧 Polled game data:", gameData)
-              console.log("🔧 Polled currentPlayer:", gameData.currentPlayer)
-              console.log("🔧 Polled current_player:", gameData.current_player)
               
               // Парсим board если это строка
               let board = gameData.board
@@ -465,32 +533,24 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
               const currentBoardString = JSON.stringify(gameState.board)
               const newBoardString = JSON.stringify(board)
               
-                          // Проверяем, не был ли сделан ход в последние 2 секунды
-            const timeSinceLastMove = Date.now() - lastMoveTime
-            const shouldUpdate = timeSinceLastMove > 2000
-            
-            // Проверяем, не приостановлена ли игра
-            if (gameData.status === 'paused' && !isGamePaused) {
-              console.log("🔧 Game paused, showing pause modal")
-              setIsGamePaused(true)
-              setPauseData({
-                gameId: gameData.id,
-                inactivePlayers: gameData.inactive_players || []
-              })
-            } else if (gameData.status === 'playing' && isGamePaused) {
-              console.log("🔧 Game resumed, hiding pause modal")
-              setIsGamePaused(false)
-              setPauseData(null)
-            }
+              // Проверяем, приостановлена ли игра
+              if (gameData.status === 'paused' && !isGamePaused) {
+                console.log("🔧 Game paused, showing pause modal")
+                setIsGamePaused(true)
+                setPauseData({
+                  gameId: gameData.id,
+                  inactivePlayers: gameData.inactive_players || []
+                })
+              } else if (gameData.status === 'playing' && isGamePaused) {
+                console.log("🔧 Game resumed, hiding pause modal")
+                setIsGamePaused(false)
+                setPauseData(null)
+              }
 
-            if ((newBoardString !== currentBoardString ||
-                gameData.status !== gameState.status ||
-                gameData.currentPlayer !== gameState.currentPlayer) && shouldUpdate) {
-              
-              console.log("🔧 Game state changed, updating...")
-              
-              // Добавляем небольшую задержку для предотвращения мерцания
-              setTimeout(() => {
+              // Проверяем, завершилась ли игра
+              if (gameData.status === 'completed' || gameData.status === 'draw') {
+                console.log("🔧 Game completed, stopping polling and updating state")
+                // Обновляем состояние перед остановкой polling
                 setGameState(prevState => ({
                   ...prevState,
                   id: gameData.id,
@@ -503,29 +563,55 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
                   winner: gameData.winner,
                   createdAt: gameData.created_at,
                 }))
-              }, 100)
-            } else {
-              console.log("🔧 No changes in game state or recent move detected")
-            }
+                // Останавливаем polling для завершенной игры
+                clearInterval(interval)
+                return
+              }
+
+              // Обновляем состояние только если есть значительные изменения
+              if (newBoardString !== currentBoardString ||
+                  gameData.status !== gameState.status ||
+                  gameData.currentPlayer !== gameState.currentPlayer) {
+                
+                console.log("🔧 Game state changed, updating...")
+                
+                // Добавляем небольшую задержку для предотвращения мерцания
+                setTimeout(() => {
+                  setGameState(prevState => ({
+                    ...prevState,
+                    id: gameData.id,
+                    board: board,
+                    currentPlayer: gameData.currentPlayer || gameData.current_player || 'X',
+                    players: gameData.players || { X: null, O: null },
+                    status: gameData.status,
+                    betAmount: gameData.bet_amount,
+                    pot: gameData.pot || gameData.bet_amount * 2,
+                    winner: gameData.winner,
+                    createdAt: gameData.created_at,
+                  }))
+                }, 200) // Увеличиваем задержку
+              } else {
+                console.log("🔧 No significant changes in game state")
+              }
             } else {
               console.error("🔧 Polling failed:", response.status)
             }
           } catch (error) {
             console.error("🔧 Error polling game state:", error)
           }
-        }, 3000) // Обновляем каждые 3 секунды для более стабильного отображения
+        }, 4000) // Увеличиваем интервал polling до 4 секунд
 
         return () => {
           console.log("🔧 Stopping polling")
           clearInterval(interval)
         }
-      }, 2000) // Задержка 2 секунды перед началом polling
+      }, 3000) // Увеличиваем начальную задержку до 3 секунд
 
       return () => {
         clearTimeout(initialDelay)
       }
     }
-  }, [currentScreen, gameState.id, gameState.status]) // Добавили gameState.status в зависимости
+  }, [currentScreen, gameState.id, gameState.status, pendingMove, lastMoveTime, isAITinking, isGamePaused]) // Добавляем зависимости для лучшего контроля
 
   // Обработчик для создания игры с ботом
   const handleCreateBotGame = useCallback(
@@ -557,6 +643,10 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
       try {
         console.log(`Создание игры со ставкой ${betAmount} для пользователя ${userData.id}`);
+        
+        // Сбрасываем сохраненный ник ИИ при создании новой игры
+        setAiNickname(null)
+        console.log(`🤖 Resetting AI nickname on new game creation`)
         
         // Показываем индикатор загрузки или блокируем кнопку
         setIsLoading(true);
@@ -675,7 +765,10 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         // Проверяем, что ячейка пуста и игра активна
         if (gameState.board[index] || gameState.status !== "playing") return
 
-        // Сначала обновляем интерфейс с ходом игрока
+        // Устанавливаем ожидаемый ход с более длительным таймаутом
+        setPendingMove({ index, timestamp: Date.now() })
+        
+        // Сначала обновляем интерфейс с ходом игрока (оптимистично)
         const newBoard = [...gameState.board]
         newBoard[index] = gameState.currentPlayer
         
@@ -709,6 +802,13 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('Ошибка при выполнении хода:', response.status, errorData);
+            // Восстанавливаем предыдущее состояние при ошибке
+            setGameState(prev => ({
+              ...prev,
+              board: gameState.board,
+              currentPlayer: gameState.currentPlayer
+            }))
+            setPendingMove(null);
             setIsAIThinking(false);
             return;
           }
@@ -720,7 +820,10 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             console.log(`Game response: status=${result.game.status}, winner=${result.game.winner}`);
             
             try {
-              // Обновляем состояние игры с данными с сервера
+              // Сначала снимаем флаг ожидаемого хода
+              setPendingMove(null)
+              
+              // Затем обновляем состояние игры с данными с сервера
               handleGameData(result.game, gameState.betAmount);
             } catch (error) {
               console.error("Error handling game data:", error)
@@ -730,23 +833,39 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             if (result.game.status === "completed" || result.game.status === "draw") {
               console.log(`Game ended with status: ${result.game.status}, winner: ${result.game.winner}`);
               
-              // Обновляем данные пользователя с сервера
+              // Обновляем данные пользователя с сервера с задержкой, чтобы модальное окно успело показаться
               if (userData?.id) {
-                try {
-                  await refreshUserData(userData.id, setUserData);
-                } catch (error) {
-                  console.error("Error refreshing user data:", error)
-                }
+                setTimeout(async () => {
+                  try {
+                    await refreshUserData(userData.id, setUserData);
+                  } catch (error) {
+                    console.error("Error refreshing user data:", error)
+                  }
+                }, 2000); // Задержка 2 секунды
               }
+              
+              // Не делаем дополнительных действий, так как GameBoard покажет результаты
+              // и вызовет handleEndGame когда пользователь закроет модальное окно
             }
+          } else {
+            // Если нет данных игры в ответе, снимаем флаг ожидаемого хода
+            setPendingMove(null)
           }
         } catch (error) {
           console.error('Ошибка при выполнении хода:', error);
+          // Восстанавливаем предыдущее состояние при ошибке
+          setGameState(prev => ({
+            ...prev,
+            board: gameState.board,
+            currentPlayer: gameState.currentPlayer
+          }))
+          setPendingMove(null);
         } finally {
           setIsAIThinking(false);
         }
       } catch (error) {
         console.error('Error in handleBotGameMove:', error);
+        setPendingMove(null);
         setIsAIThinking(false);
       }
     },
@@ -760,6 +879,9 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       try {
         console.log(`Making move: index=${index}, userId=${userData.id}, gameId=${activeGame.id}`)
+        
+        // Устанавливаем ожидаемый ход
+        setPendingMove({ index, timestamp: Date.now() })
         
         // Сохраняем текущий баланс перед ходом
         const previousBalance = userData.balance;
@@ -782,12 +904,17 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         if (!response.ok) {
           const err = await response.json()
           console.error("Move error:", err)
+          setPendingMove(null) // Снимаем флаг ожидаемого хода при ошибке
           alert(err.error || "Ошибка хода")
           return
         }
         
         const result = await response.json()
         console.log("Move result:", result)
+        
+        // Снимаем флаг ожидаемого хода
+        setPendingMove(null)
+        
         console.log("Game data:", result.game)
         console.log("Game status:", result.game.status)
         console.log("Game winner:", result.game.winner)
@@ -942,6 +1069,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         }
       } catch (error) {
         console.error("Error making move:", error)
+        setPendingMove(null); // Снимаем флаг ожидаемого хода при ошибке
         alert("Произошла ошибка при выполнении хода")
       }
     },
@@ -961,40 +1089,39 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         }
       }
       
-      // Безопасное обновление состояния игры
+      // Полный сброс состояния игры
       setGameState({
         id: '',
         board: Array(9).fill(null),
         currentPlayer: 'X',
         players: { X: { id: '', username: '', avatar: null }, O: null },
-        status: 'waiting', // Изменяем на "waiting" вместо "playing"
+        status: 'waiting',
         betAmount: 0,
         pot: 0,
         winner: null,
         createdAt: ''
       })
       
+      // Сбрасываем все связанные состояния
+      setWaitingGameId("")
+      setWaitingBetAmount(0)
+      setGameMode("ai")
+      setPendingMove(null) // Сбрасываем ожидаемый ход
+      setAiNickname(null) // Сбрасываем сохраненный ник ИИ
+      console.log(`🤖 Resetting AI nickname on game end`)
+      
+      // Переходим на главный экран
       setCurrentScreen("home")
       
-      // После завершения игры сохраняем текущий баланс
+      // Обновляем данные пользователя после завершения игры
       if (userData?.id) {
         console.log("Forcing user data refresh after game end")
         
-        // Сохраняем текущий баланс для проверки
-        const currentBalance = userData.balance;
-        console.log(`Current balance before refresh: ${currentBalance}`);
-        
-        // Прямое обновление баланса в базе данных
-        updateUserBalance(userData.id, currentBalance).then(() => {
-          console.log(`Balance successfully updated to ${currentBalance}`);
-          // Не обновляем данные пользователя, так как баланс уже установлен
+        // Обновляем данные пользователя с сервера
+        refreshUserData(userData.id, setUserData).then(() => {
+          console.log("User data refreshed after game end")
         }).catch((error) => {
-          console.error(`Failed to update balance, refreshing user data:`, error);
-          try {
-            refreshUserData(userData.id, setUserData);
-          } catch (refreshError) {
-            console.error("Error refreshing user data:", refreshError)
-          }
+          console.error("Error refreshing user data after game end:", error)
         });
       }
     } catch (error) {

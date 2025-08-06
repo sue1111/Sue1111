@@ -64,10 +64,10 @@ export async function POST(
 
     // Создаем фиктивного пользователя для маскировки ИИ
     const fakeUsernames = [
-      'Alex', 'Maria', 'John', 'Sarah', 'Mike', 'Emma', 'David', 'Lisa',
-      'Tom', 'Anna', 'Chris', 'Sophie', 'Paul', 'Kate', 'Mark', 'Julia',
-      'Ryan', 'Emily', 'James', 'Olivia', 'Daniel', 'Sophia', 'Matthew', 'Ava',
-      'Christopher', 'Isabella', 'Andrew', 'Mia', 'Joshua', 'Charlotte', 'Nathan', 'Amelia'
+      'alex_krv', 'maria.sun', 'johnny99', 's4rah_luv', 'mike.xd', 'emma_jay', 'david.zero', 'lisa.mint',
+      'tom.dev', 'anna_waves', 'chr1s.b', 'so_phiee', 'paulie777', 'k8lyn_', 'markov.ai', 'julz_01',
+      'ryan.chill', 'em1ly_x', 'jameson.tv', 'olivianova', 'dani.codes', 'sofia.23', 'matt.vibes', 'ava_rain',
+      'xtopher_', 'isa.bella', 'drewhype', 'miami.mia', 'jshua88', 'charl0tte_', 'n8han.io', 'ame.lia'
     ]
     
     const randomUsername = fakeUsernames[Math.floor(Math.random() * fakeUsernames.length)]

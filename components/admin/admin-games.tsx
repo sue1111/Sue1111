@@ -100,11 +100,20 @@ export default function AdminGames({ adminId }: AdminGamesProps) {
     // Доработка: если нет второго игрока, показываем ИИ и статус completed
     let newGame = { ...game };
     if (!game.players?.O) {
+      // Генерируем случайное имя для ИИ
+      const fakeUsernames = [
+        'alex_krv', 'maria.sun', 'johnny99', 's4rah_luv', 'mike.xd', 'emma_jay', 'david.zero', 'lisa.mint',
+        'tom.dev', 'anna_waves', 'chr1s.b', 'so_phiee', 'paulie777', 'k8lyn_', 'markov.ai', 'julz_01',
+        'ryan.chill', 'em1ly_x', 'jameson.tv', 'olivianova', 'dani.codes', 'sofia.23', 'matt.vibes', 'ava_rain',
+        'xtopher_', 'isa.bella', 'drewhype', 'miami.mia', 'jshua88', 'charl0tte_', 'n8han.io', 'ame.lia'
+      ]
+      const randomUsername = fakeUsernames[Math.floor(Math.random() * fakeUsernames.length)]
+      
       newGame = {
         ...game,
         players: {
           ...game.players,
-          O: { id: "ai", username: "ИИ Оппонент", avatar: null }
+          O: { id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, username: randomUsername, avatar: null }
         },
         status: game.status === "waiting" ? "completed" : game.status
       };

@@ -46,8 +46,8 @@ export async function GET(
       } else if (game.player_o && game.player_o.startsWith('ai_')) {
         // Если это ИИ, но нет имени, используем случайное имя
         const fakeUsernames = [
-          'Alex', 'Maria', 'John', 'Sarah', 'Mike', 'Emma', 'David', 'Lisa',
-          'Tom', 'Anna', 'Chris', 'Sophie', 'Paul', 'Kate', 'Mark', 'Julia'
+          'alex_krv', 'maria.sun', 'johnny99', 's4rah_luv', 'mike.xd', 'emma_jay', 'david.zero', 'lisa.mint',
+          'tom.dev', 'anna_waves', 'chr1s.b', 'so_phiee', 'paulie777', 'k8lyn_', 'markov.ai', 'julz_01'
         ]
         playerOName = fakeUsernames[Math.floor(Math.random() * fakeUsernames.length)]
       }
