@@ -172,16 +172,27 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       // Сохраняем ходы игрока, если есть ожидаемый ход
       let finalBoard = [...parsedBoard];
+      
+      // ВСЕГДА сохраняем ход игрока, если он был сделан недавно
       if (pendingMove && (Date.now() - pendingMove.timestamp) < 8000) { // Увеличиваем таймаут до 8 секунд
         console.log(`🎯 Pending move detected at index ${pendingMove.index}, preserving player move`);
         const playerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
         
-        // Проверяем, что ячейка в данных с сервера пуста или содержит ход игрока
-        if (finalBoard[pendingMove.index] === null || finalBoard[pendingMove.index] === playerSymbol) {
-          finalBoard[pendingMove.index] = playerSymbol;
-          console.log(`🎯 Preserved player move: ${playerSymbol} at index ${pendingMove.index}`);
-        } else {
-          console.log(`🎯 Server already has move at index ${pendingMove.index}: ${finalBoard[pendingMove.index]}`);
+        // ВСЕГДА сохраняем ход игрока, даже если сервер его не видит
+        finalBoard[pendingMove.index] = playerSymbol;
+        console.log(`🎯 Preserved player move: ${playerSymbol} at index ${pendingMove.index}`);
+      }
+      
+      // Дополнительная проверка: если на доске есть ход игрока, но его нет в данных сервера,
+      // сохраняем его в любом случае
+      const playerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
+      
+      // Проверяем, есть ли ход игрока в pendingMove, который нужно сохранить
+      if (pendingMove && pendingMove.index >= 0 && pendingMove.index < 9) {
+        const pendingPlayerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
+        if (finalBoard[pendingMove.index] !== pendingPlayerSymbol) {
+          console.log(`🎯 Restoring pending player move at index ${pendingMove.index}: ${pendingPlayerSymbol}`);
+          finalBoard[pendingMove.index] = pendingPlayerSymbol;
         }
       }
       
@@ -245,6 +256,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       console.log(`Game data from server: status=${game.status}, winner=${game.winner}`);
       console.log(`Current player from server: currentPlayer=${game.currentPlayer}, current_player=${game.current_player}`);
       console.log(`BetAmount Debug: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}`);
+      console.log(`BetAmount Sources: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}, gameState?.betAmount=${gameState?.betAmount}`);
       
       const newGameState = {
         id: game.id,
@@ -252,8 +264,8 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         currentPlayer: game.currentPlayer || game.current_player || "X",
         players,
         status,
-        betAmount: game.bet_amount || game.betAmount || betAmount || (game.pot ? game.pot / 2 : 0),
-        pot: game.pot || (game.bet_amount ? game.bet_amount * 2 : betAmount * 2),
+        betAmount: game.bet_amount || game.betAmount || betAmount || (game.pot ? game.pot / 2 : 0) || gameState?.betAmount || 0,
+        pot: game.pot || (game.bet_amount ? game.bet_amount * 2 : betAmount * 2) || gameState?.pot || 0,
         winner: game.winner || null,
         createdAt: game.created_at || new Date().toISOString(),
       };
@@ -282,7 +294,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       setCurrentScreen("game");
       setIsLoading(false);
     }
-  }, [userData, pendingMove, aiNickname]);
+  }, [userData, pendingMove, aiNickname, gameState?.betAmount]);
 
   // Создание мультиплеер игры с ожиданием
   const handleCreateMultiplayerGame = useCallback(
@@ -834,13 +846,18 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             console.log(`Game response: status=${result.game.status}, winner=${result.game.winner}`);
             
             try {
-              // Сначала снимаем флаг ожидаемого хода
-              setPendingMove(null)
+              // НЕ снимаем флаг ожидаемого хода сразу - даем время на обработку
+              // setPendingMove(null) - убираем эту строку
               
               // Затем обновляем состояние игры с данными с сервера
               handleGameData(result.game, gameState.betAmount);
+              
+              // Снимаем флаг только после успешной обработки
+              setPendingMove(null);
             } catch (error) {
               console.error("Error handling game data:", error)
+              // Даже при ошибке снимаем флаг
+              setPendingMove(null);
             }
             
             // Проверяем, завершилась ли игра
@@ -1333,6 +1350,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             userData={userData}
             isMultiplayer={!!activeGame}
             isAIThinking={isAITinking}
+            pendingMove={pendingMove}
           />
         )
       )}

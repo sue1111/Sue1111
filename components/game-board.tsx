@@ -13,6 +13,7 @@ interface GameBoardProps {
   userData: UserData | null
   isMultiplayer?: boolean
   isAIThinking?: boolean
+  pendingMove?: { index: number; timestamp: number } | null
 }
 
 export default function GameBoard({
@@ -22,10 +23,32 @@ export default function GameBoard({
   userData,
   isMultiplayer = false,
   isAIThinking = false,
+  pendingMove = null,
 }: GameBoardProps) {
   // Ensure betAmount and pot have default values
-  const betAmount = gameState.betAmount || gameState.pot / 2 || 0;
-  const pot = gameState.pot || 0;
+  const betAmount = gameState.betAmount || 
+                   (gameState.pot && gameState.pot > 0 ? gameState.pot / 2 : 0) || 
+                   0;
+  const pot = gameState.pot || (gameState.betAmount ? gameState.betAmount * 2 : 0) || 0;
+  
+  // Функция для безопасного получения ставки с дополнительными проверками
+  const getSafeBetAmount = () => {
+    // Приоритет: gameState.betAmount > pot/2 > 0
+    if (gameState.betAmount && gameState.betAmount > 0) {
+      return gameState.betAmount;
+    }
+    if (gameState.pot && gameState.pot > 0) {
+      return gameState.pot / 2;
+    }
+    // Если ничего не найдено, возвращаем 0
+    return 0;
+  };
+  
+  const safeBetAmount = getSafeBetAmount();
+  
+  // Определяем, какой символ использует текущий игрок (X или O)
+  const playerSymbol = userData ? (gameState.players.X.id === userData.id ? "X" : "O") : "X"
+  const isPlayerTurn = gameState.currentPlayer === playerSymbol
   
   // Добавляем логирование для отладки betAmount
   useEffect(() => {
@@ -34,11 +57,15 @@ export default function GameBoard({
         gameStateBetAmount: gameState.betAmount,
         gameStatePot: gameState.pot,
         calculatedBetAmount: betAmount,
+        safeBetAmount: safeBetAmount,
         calculatedPot: pot,
-        gameState: gameState
+        gameState: gameState,
+        gameStatus: gameState.status,
+        gameWinner: gameState.winner,
+        didPlayerWin: gameState.winner === playerSymbol
       });
     }
-  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, pot]);
+  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, safeBetAmount, pot, gameState.winner, playerSymbol]);
 
   const [showResults, setShowResults] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15)
@@ -47,10 +74,6 @@ export default function GameBoard({
   const [isComponentMounted, setIsComponentMounted] = useState(true)
   const [gameEnded, setGameEnded] = useState(false)
 
-  // Определяем, какой символ использует текущий игрок (X или O)
-  const playerSymbol = userData ? (gameState.players.X.id === userData.id ? "X" : "O") : "X"
-  const isPlayerTurn = gameState.currentPlayer === playerSymbol
-  
   // Определяем имя противника
   const opponentName = gameState.players.O?.username || "Opponent"
   
@@ -250,6 +273,10 @@ export default function GameBoard({
       const isLastMove = lastMove === index
       const isHighlighted = boardHighlight.includes(index)
       const isDisabled = !isPlayerTurn || gameState.status !== "playing" || value !== null || isAIThinking
+      
+      // Проверяем, есть ли pendingMove для этой ячейки
+      const hasPendingMove = pendingMove && pendingMove.index === index
+      const pendingPlayerSymbol = userData?.id === gameState.players?.X?.id ? "X" : "O"
 
       return (
         <button
@@ -264,7 +291,7 @@ export default function GameBoard({
           onClick={() => handleCellClick(index)}
           disabled={isDisabled}
         >
-          {value === "X" && (
+          {(value === "X" || (hasPendingMove && pendingPlayerSymbol === "X")) && (
             <span
               className="text-4xl md:text-5xl transform transition-transform duration-300 ease-in-out"
               style={{ 
@@ -275,7 +302,7 @@ export default function GameBoard({
               X
             </span>
           )}
-          {value === "O" && (
+          {(value === "O" || (hasPendingMove && pendingPlayerSymbol === "O")) && (
             <span
               className="text-4xl md:text-5xl transform transition-transform duration-300 ease-in-out"
               style={{ 
@@ -290,7 +317,9 @@ export default function GameBoard({
       )
     } catch (error) {
       console.error("Error rendering cell:", error)
-      return <div key={index} className="aspect-square rounded-lg bg-gray-200"></div>
+      return (
+        <div key={index} className="aspect-square rounded-lg bg-gray-200"></div>
+      )
     }
   }
 
@@ -454,7 +483,7 @@ export default function GameBoard({
               <div className="mb-4">
                 {didPlayerWin && (
                   <p className="text-gray-600 dark:text-gray-300">
-                    Congratulations! You won ${(betAmount * 2).toFixed(2)} (2x your bet).
+                    Congratulations! You won ${(safeBetAmount * 2).toFixed(2)} (2x your bet).
                   </p>
                 )}
 
@@ -466,7 +495,7 @@ export default function GameBoard({
 
                 {gameState.winner && !didPlayerWin && (
                   <p className="text-gray-600 dark:text-gray-300">
-                    Better luck next time! You lost ${betAmount.toFixed(2)}.
+                    Better luck next time! You lost ${safeBetAmount.toFixed(2)}.
                   </p>
                 )}
               </div>
@@ -475,7 +504,7 @@ export default function GameBoard({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Your Bet</div>
-                    <div className="font-bold text-primary">${betAmount.toFixed(2)}</div>
+                    <div className="font-bold text-primary">${safeBetAmount.toFixed(2)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Your Balance</div>
