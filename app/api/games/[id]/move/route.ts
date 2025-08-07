@@ -61,33 +61,27 @@ async function updatePlayerStats(userId: string, isWin: boolean, winnings: numbe
     
     logWithTimestamp(`Updating user stats with:`, updates);
     
-    // Обновляем данные пользователя
+    // БЕЗОПАСНЫЙ СПОСОБ: Используем Supabase API вместо прямого SQL
     const { error: updateError } = await directSupabase
       .from("users")
-      .update(updates)
+      .update({
+        games_played: updates.games_played,
+        games_won: updates.games_won,
+        total_winnings: updates.total_winnings
+      })
       .eq("id", userId);
       
     if (updateError) {
       logWithTimestamp(`Failed to update user stats:`, updateError);
       
-      // Пробуем обновить через SQL запрос напрямую
+      // Пробуем обновить через SQL запрос напрямую (только для числовых значений)
       try {
-        let sqlQuery = `UPDATE public.users SET games_played = ${updates.games_played}`;
-        
-        if (updates.games_won !== undefined) {
-          sqlQuery += `, games_won = ${updates.games_won}`;
-        }
-        
-        if (updates.total_winnings !== undefined) {
-          sqlQuery += `, total_winnings = ${updates.total_winnings}`;
-        }
-        
-        sqlQuery += ` WHERE id = '${userId}';`;
-        
-        logWithTimestamp(`Executing SQL query:`, sqlQuery);
-        
-        const { error: sqlError } = await directSupabase.rpc('exec_sql', { 
-          sql: sqlQuery 
+        // БЕЗОПАСНЫЙ SQL: Используем параметризованный запрос
+        const { error: sqlError } = await directSupabase.rpc('update_user_stats_safe', {
+          p_user_id: userId,
+          p_games_played: updates.games_played,
+          p_games_won: updates.games_won || 0,
+          p_total_winnings: updates.total_winnings || 0
         });
         
         if (sqlError) {
@@ -333,6 +327,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
     logWithTimestamp(`Board state:`, board);
     logWithTimestamp(`Board has empty cells:`, board.includes(null));
     
+    let gameStatus = gameData.status
+    let gameWinner = null
+    let gameEndedAt = null
+
+    if (winner) {
+      gameStatus = "completed"
+      gameWinner = winner
+      gameEndedAt = new Date().toISOString()
+      logWithTimestamp(`Game completed with winner: ${winner}`);
+    } else if (!board.includes(null)) {
+      // Нет победителя и нет пустых клеток — ничья
+      gameStatus = "draw"
+      gameWinner = null
+      gameEndedAt = new Date().toISOString()
+      logWithTimestamp(`Game ended in a draw (no winner, board full)`);
+    }
+    
     // Проверяем все возможные выигрышные линии
     const lines = [
       [0, 1, 2], [3, 4, 5], [6, 7, 8], // горизонтали
@@ -360,9 +371,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       logWithTimestamp(`Current game state in DB:`, currentGameState);
     }
     
-    let gameStatus = gameData.status
-    let gameWinner = null
-    let gameEndedAt = null
+    logWithTimestamp(`Game ended at: ${gameEndedAt}`);
 
     if (winner) {
       gameStatus = "completed"
@@ -524,10 +533,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     
     // Проверяем на ничью (если нет победителя и доска заполнена)
-    if (!winner && !board.includes(null)) {
-      gameStatus = "draw"
-      gameEndedAt = new Date().toISOString()
-      
+    if (gameStatus === "draw") {
       logWithTimestamp(`Game ended in a draw (no winner, board full)`);
       
       logWithTimestamp(`Game ended in a draw`);
@@ -659,9 +665,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (emptyIndices.length > 0) {
         const { data: systemSettings } = await directSupabase
           .from("system_settings")
-          .select("bot_win_percentage")
+          .select("bot_win_probability")
           .single()
-        const botWinPercentage = systemSettings?.bot_win_percentage || 50
+        const botWinPercentage = systemSettings?.bot_win_probability || 50
         const winProbability = botWinPercentage / 100
         const shouldMakeStrategicMove = Math.random() < winProbability
         let aiMoveIndex: number

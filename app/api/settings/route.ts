@@ -84,7 +84,28 @@ export async function GET(request: Request) {
       const settings = data as SystemSettingsRow | null
 
       if (error || !settings) {
-        // Return default game settings if none found
+        // Create initial record if none exists
+        const { error: createError } = await supabase
+          .from("system_settings")
+          .insert([{
+            id: 1,
+            platform_fee: 20.00,
+            min_bet: 1,
+            max_bet: 1000,
+            min_withdrawal: 10,
+            maintenance_mode: false,
+            platform_fee_vs_bot: 20.00,
+            platform_fee_vs_player: 10.00,
+            max_wins_per_user: 3,
+            bot_win_probability: 50.00,
+            updated_at: new Date().toISOString()
+          }] as any)
+
+        if (createError) {
+          console.error("Error creating initial system settings:", createError)
+        }
+
+        // Return default game settings
         return NextResponse.json({
           type: "game",
           settings: {
@@ -101,6 +122,27 @@ export async function GET(request: Request) {
           difficultyLevel: ((settings as any).bot_win_probability || 50).toString(),
           maxWinsPerUser: (settings as any).max_wins_per_user || 3
         }
+      })
+    } else if (type === "game-client") {
+      // Endpoint for clients to get game settings (no admin required)
+      const { data, error } = await supabase
+        .from("system_settings")
+        .select("bot_win_probability, max_wins_per_user")
+        .single()
+
+      const settings = data as any
+
+      if (error || !settings) {
+        // Return default settings if none found
+        return NextResponse.json({
+          botWinPercentage: 50,
+          maxWinsPerUser: 3
+        })
+      }
+
+      return NextResponse.json({
+        botWinPercentage: settings.bot_win_probability || 50,
+        maxWinsPerUser: settings.max_wins_per_user || 3
       })
     } else {
       return NextResponse.json({ error: "Invalid settings type" }, { status: 400 })
@@ -237,19 +279,60 @@ export async function POST(request: Request) {
     const botWinProbability = Number.parseFloat(settings.difficultyLevel) || 50
     const maxWinsPerUser = settings.maxWinsPerUser
 
-    // Обновляем настройки игры через SQL-функцию
-    const { error } = await supabase.rpc('upsert_game_settings', {
-      p_bot_win_probability: botWinProbability,
-      p_max_wins_per_user: maxWinsPerUser
-    })
+    console.log(`Saving game settings: botWinProbability=${botWinProbability}, maxWinsPerUser=${maxWinsPerUser}`)
 
-    if (error) {
-      console.error("Ошибка обновления настроек игры:", error)
-      return NextResponse.json({ 
-        error: "Не удалось обновить настройки игры", 
-        details: error 
-      }, { status: 500 })
+    // Проверяем, существует ли запись в system_settings
+    const { data: existingRecord } = await supabase
+      .from("system_settings")
+      .select("id")
+      .limit(1)
+
+    if (!existingRecord || existingRecord.length === 0) {
+      // Создаем начальную запись с настройками по умолчанию
+      const { error: createError } = await supabase
+        .from("system_settings")
+        .insert([{
+          id: 1,
+          platform_fee: 20.00,
+          min_bet: 1,
+          max_bet: 1000,
+          min_withdrawal: 10,
+          maintenance_mode: false,
+          platform_fee_vs_bot: 20.00,
+          platform_fee_vs_player: 10.00,
+          max_wins_per_user: maxWinsPerUser,
+          bot_win_probability: botWinProbability,
+          updated_at: new Date().toISOString()
+        }] as any)
+
+      if (createError) {
+        console.error("Error creating initial system settings:", createError)
+        return NextResponse.json({ 
+          error: "Не удалось создать настройки системы", 
+          details: createError 
+        }, { status: 500 })
+      }
+    } else {
+      // Обновляем существующую запись
+      const { error: updateError } = await supabase
+        .from("system_settings")
+        .update({
+          max_wins_per_user: maxWinsPerUser,
+          bot_win_probability: botWinProbability,
+          updated_at: new Date().toISOString()
+        } as any)
+        .eq("id", 1 as any)
+
+      if (updateError) {
+        console.error("Ошибка обновления настроек игры:", updateError)
+        return NextResponse.json({ 
+          error: "Не удалось обновить настройки игры", 
+          details: updateError 
+        }, { status: 500 })
+      }
     }
+
+    console.log("Game settings saved successfully")
 
     // Возвращаем сохраненные настройки
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { isValidUUID, isValidNumber, createSafeUpdateObject } from "@/lib/utils/validation"
 
 // Создаем прямое подключение к Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
@@ -43,6 +44,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const userId = params.id
     console.log(`Fetching user data for ID: ${userId}`)
+
+    // БЕЗОПАСНОСТЬ: Валидация UUID
+    if (!userId || !isValidUUID(userId)) {
+      console.error("Invalid user ID format")
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
+    }
 
     if (!userId) {
       console.error("User ID is required")
@@ -182,33 +189,34 @@ export async function GET(request: Request, { params }: { params: { id: string }
               sql: `SET session_replication_role = 'replica';`
             });
             
-        // Составляем SQL-запрос для обновления
-        let updateQuery = `UPDATE public.users SET `;
-        const updates = [];
+        // БЕЗОПАСНЫЙ СПОСОБ: Используем Supabase API вместо прямого SQL
+        const updateData: any = {};
         
         if (clientBalance !== null) {
-          updates.push(`balance = ${clientBalance}`);
+          updateData.balance = clientBalance;
         }
         
         if (clientGamesPlayed !== null) {
-          updates.push(`games_played = ${clientGamesPlayed}`);
+          updateData.games_played = clientGamesPlayed;
         }
         
         if (clientGamesWon !== null) {
-          updates.push(`games_won = ${clientGamesWon}`);
+          updateData.games_won = clientGamesWon;
         }
         
         if (clientTotalWinnings !== null) {
-          updates.push(`total_winnings = ${clientTotalWinnings}`);
+          updateData.total_winnings = clientTotalWinnings;
         }
         
-        updateQuery += updates.join(', ');
-        updateQuery += ` WHERE id = '${userId}';`;
-        
-        console.log(`Executing SQL query: ${updateQuery}`);
-        
-        // Выполняем SQL-запрос
-        await directSupabase.rpc('exec_sql', { sql: updateQuery });
+        const { error: updateError } = await directSupabase
+          .from("users")
+          .update(updateData)
+          .eq("id", userId);
+          
+        if (updateError) {
+          console.error(`Failed to restore user data:`, updateError);
+          throw updateError;
+        }
             
             // Включаем триггеры обратно
             await directSupabase.rpc('exec_sql', { 
@@ -250,6 +258,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const userId = params.id
     console.log(`Updating user data for ID: ${userId}`)
+
+    // БЕЗОПАСНОСТЬ: Валидация UUID
+    if (!userId || !isValidUUID(userId)) {
+      console.error("Invalid user ID format")
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
+    }
 
     if (!userId) {
       console.error("User ID is required")
@@ -354,33 +368,28 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (direct) {
       console.log(`Using direct update method with disabled triggers`)
       
-          try {
-            // Отключаем триггеры перед обновлением
-            await directSupabase.rpc('exec_sql', { 
-              sql: `SET session_replication_role = 'replica';`
-            });
-            
-        // Составляем SQL-запрос для обновления
-        let updateQuery = `UPDATE public.users SET `;
-        const updates = [];
+      try {
+        // Отключаем триггеры перед обновлением
+        await directSupabase.rpc('exec_sql', { 
+          sql: `SET session_replication_role = 'replica';`
+        });
         
-        for (const [key, value] of Object.entries(updateData)) {
-          updates.push(`${key} = ${value}`);
+        // БЕЗОПАСНЫЙ СПОСОБ: Используем Supabase API вместо прямого SQL
+        const { error: updateError } = await directSupabase
+          .from("users")
+          .update(updateData)
+          .eq("id", userId);
+          
+        if (updateError) {
+          console.error(`Supabase update failed:`, updateError);
+          throw updateError;
         }
-        
-        updateQuery += updates.join(', ');
-        updateQuery += ` WHERE id = '${userId}';`;
-        
-        console.log(`Executing SQL query: ${updateQuery}`);
-        
-        // Выполняем SQL-запрос
-        await directSupabase.rpc('exec_sql', { sql: updateQuery });
             
-            // Включаем триггеры обратно
-            await directSupabase.rpc('exec_sql', { 
-              sql: `SET session_replication_role = 'origin';`
-            });
-            
+        // Включаем триггеры обратно
+        await directSupabase.rpc('exec_sql', { 
+          sql: `SET session_replication_role = 'origin';`
+        });
+        
         console.log(`Direct update successful`);
         
         // Проверяем, что обновление прошло успешно

@@ -32,6 +32,14 @@ export default function AdminNotifications({ adminId, notifications = [] }: Admi
       return
     }
 
+    // Сохраняем текущий список для возможного отката
+    const prevNotifications = localNotifications
+
+    // Мгновенно удаляем заявку из UI (оптимистичный UI)
+    setLocalNotifications((prev) =>
+      prev.filter((notification) => notification.id !== notificationId)
+    )
+
     setIsLoading(true)
     try {
       const response = await fetch(`/api/admin/notifications`, {
@@ -50,17 +58,12 @@ export default function AdminNotifications({ adminId, notifications = [] }: Admi
         throw new Error("Failed to update notification")
       }
 
-      setLocalNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, status: action === "approve" ? "approved" : "rejected" }
-            : notification,
-        ),
-      )
       // Показываем диалоговое окно с результатом
       setDialogMessage(action === "approve" ? "Заявка одобрена!" : "Заявка успешно отклонена.")
       setDialogOpen(true)
     } catch (error) {
+      // Если ошибка — возвращаем заявку обратно
+      setLocalNotifications(prevNotifications)
       setDialogMessage("Ошибка при обновлении заявки")
       setDialogOpen(true)
       console.error("Error updating notification:", error)

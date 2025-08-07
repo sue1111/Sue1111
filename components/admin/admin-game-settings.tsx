@@ -37,6 +37,7 @@ export default function AdminGameSettings({ adminId }: AdminGameSettingsProps) {
           const data = await response.json()
           // Make sure we have valid settings data before updating state
           if (data && data.settings) {
+            console.log("Loaded game settings:", data.settings)
             setSettings(data.settings)
           } else {
             console.warn("Received invalid settings data:", data)

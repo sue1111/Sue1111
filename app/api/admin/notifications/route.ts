@@ -80,7 +80,7 @@ export async function PATCH(request: Request) {
 
       // Calculate commission using configurable percentage (default 20%)
       const depositAmount = Number(notificationData.amount)
-      const depositFeePercentage = systemSettings?.deposit_fee || 20
+      const depositFeePercentage = (systemSettings as any)?.deposit_fee || 20
       const commission = depositAmount * (depositFeePercentage / 100)
       const amountToCredit = depositAmount - commission
       
@@ -128,11 +128,33 @@ export async function PATCH(request: Request) {
         console.error("Error creating commission transaction:", commissionTxError)
         // Don't fail the whole operation if commission recording fails
       }
+
+      // Удаляем уведомление из базы данных после успешной обработки
+      const { error: deleteError } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("id", notificationId)
+        
+      if (deleteError) {
+        console.error("Error deleting notification:", deleteError)
+        // Не прерываем операцию, если удаление уведомления не удалось
+      }
     }
 
-    // If rejected, just update status
-    if (notification.type === "deposit_request" && status === "rejected") {
+    // If rejected, just update status and delete notification
+    if ((notification as any).type === "deposit_request" && status === "rejected") {
       console.log(`Deposit request ${notificationId} rejected by admin ${adminId}`)
+      
+      // Удаляем отклоненное уведомление из базы данных
+      const { error: deleteError } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("id", notificationId)
+        
+      if (deleteError) {
+        console.error("Error deleting rejected notification:", deleteError)
+        // Не прерываем операцию, если удаление уведомления не удалось
+      }
     }
 
     return NextResponse.json({ success: true })

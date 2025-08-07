@@ -285,15 +285,118 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 ### Финансовая безопасность
 - Валидация всех транзакций
-- Защита от отрицательного баланса
-- Логирование всех операций
-- Проверка целостности данных
+- Проверка баланса перед операциями
+- Логирование всех финансовых операций
 
-### API безопасность
-- Валидация входных данных
-- Rate limiting
-- CORS настройки
-- Защита от SQL инъекций
+### Защита от SQL инъекций
+
+#### ✅ Реализованные меры защиты:
+
+1. **Параметризованные запросы**
+   ```typescript
+   // БЕЗОПАСНО: Используем Supabase API
+   const { error } = await supabase
+     .from("users")
+     .update({ balance: newBalance })
+     .eq("id", userId);
+   ```
+
+2. **Валидация входных данных**
+   ```typescript
+   // Проверка UUID
+   if (!isValidUUID(userId)) {
+     return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
+   }
+   
+   // Проверка числовых значений
+   if (!isValidNumber(balance)) {
+     return NextResponse.json({ error: "Invalid balance" }, { status: 400 })
+   }
+   ```
+
+3. **Безопасные функции в базе данных**
+   ```sql
+   CREATE OR REPLACE FUNCTION update_user_stats_safe(
+     p_user_id UUID,
+     p_games_played INTEGER,
+     p_games_won INTEGER,
+     p_total_winnings NUMERIC
+   ) RETURNS VOID AS $$
+   BEGIN
+     UPDATE public.users 
+     SET 
+       games_played = p_games_played,
+       games_won = p_games_won,
+       total_winnings = p_total_winnings
+     WHERE id = p_user_id;
+   END;
+   $$ LANGUAGE plpgsql SECURITY DEFINER;
+   ```
+
+4. **Middleware защита**
+   - Валидация UUID в URL параметрах
+   - Проверка query параметров на SQL инъекции
+   - Security headers (XSS Protection, CSP, etc.)
+
+5. **Валидация типов данных**
+   ```typescript
+   export function createSafeUpdateObject(data: Record<string, any>): Record<string, any> {
+     const safeData: Record<string, any> = {};
+     
+     for (const [key, value] of Object.entries(data)) {
+       // Проверяем, что ключ безопасен
+       if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+         // Проверяем значение в зависимости от типа поля
+         if (key.includes('balance') && isValidNumber(value)) {
+           safeData[key] = value;
+         }
+       }
+     }
+     
+     return safeData;
+   }
+   ```
+
+#### 🚫 Запрещенные практики:
+
+1. **Конкатенация строк в SQL**
+   ```typescript
+   // НЕ БЕЗОПАСНО:
+   const query = `UPDATE users SET balance = ${balance} WHERE id = '${userId}'`;
+   
+   // БЕЗОПАСНО:
+   const { error } = await supabase
+     .from("users")
+     .update({ balance })
+     .eq("id", userId);
+   ```
+
+2. **Прямое использование пользовательского ввода**
+   ```typescript
+   // НЕ БЕЗОПАСНО:
+   const { data } = await supabase.rpc('exec_sql', { sql: userInput });
+   
+   // БЕЗОПАСНО:
+   const { data } = await supabase
+     .from("users")
+     .select("*")
+     .eq("id", validatedUserId);
+   ```
+
+#### 🔍 Мониторинг безопасности:
+
+1. **Логирование подозрительной активности**
+   - Попытки SQL инъекций
+   - Неверные UUID форматы
+   - Множественные неудачные запросы
+
+2. **Rate Limiting**
+   - Ограничение количества запросов с одного IP
+   - Блокировка подозрительных паттернов
+
+3. **Аудит базы данных**
+   - Логирование всех изменений данных
+   - Отслеживание доступа к критичным таблицам
 
 ---
 

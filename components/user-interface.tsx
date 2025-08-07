@@ -108,6 +108,19 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             botWinPercentage: settings.botWinPercentage || 50 // Загружаем вероятность победы бота
           })
         }
+        
+        // Также загружаем игровые настройки для клиентов
+        const gameSettingsResponse = await fetch("/api/settings?type=game-client")
+        if (gameSettingsResponse.ok) {
+          const gameSettings = await gameSettingsResponse.json()
+          console.log("Loaded game settings for client:", gameSettings)
+          // Обновляем системные настройки с игровыми
+          setSystemSettings(prev => ({
+            ...prev,
+            botWinPercentage: gameSettings.botWinPercentage || 50,
+            maxWinsPerUser: gameSettings.maxWinsPerUser || 3
+          }))
+        }
       } catch (error) {
         console.error("Ошибка загрузки системных настроек:", error)
       }
@@ -231,6 +244,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       console.log(`Setting game status: ${status}, winner: ${game.winner}`);
       console.log(`Game data from server: status=${game.status}, winner=${game.winner}`);
       console.log(`Current player from server: currentPlayer=${game.currentPlayer}, current_player=${game.current_player}`);
+      console.log(`BetAmount Debug: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}`);
       
       const newGameState = {
         id: game.id,
@@ -238,8 +252,8 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         currentPlayer: game.currentPlayer || game.current_player || "X",
         players,
         status,
-        betAmount: game.bet_amount || betAmount,
-        pot: game.pot || betAmount,
+        betAmount: game.bet_amount || game.betAmount || betAmount || (game.pot ? game.pot / 2 : 0),
+        pot: game.pot || (game.bet_amount ? game.bet_amount * 2 : betAmount * 2),
         winner: game.winner || null,
         createdAt: game.created_at || new Date().toISOString(),
       };

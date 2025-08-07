@@ -24,9 +24,22 @@ export default function GameBoard({
   isAIThinking = false,
 }: GameBoardProps) {
   // Ensure betAmount and pot have default values
-  const betAmount = gameState.betAmount || 0;
+  const betAmount = gameState.betAmount || gameState.pot / 2 || 0;
   const pot = gameState.pot || 0;
   
+  // Добавляем логирование для отладки betAmount
+  useEffect(() => {
+    if (gameState.status === "completed" || gameState.status === "draw") {
+      console.log(`🎮 BetAmount Debug:`, {
+        gameStateBetAmount: gameState.betAmount,
+        gameStatePot: gameState.pot,
+        calculatedBetAmount: betAmount,
+        calculatedPot: pot,
+        gameState: gameState
+      });
+    }
+  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, pot]);
+
   const [showResults, setShowResults] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15)
   const [lastMove, setLastMove] = useState<number | null>(null)
@@ -103,6 +116,15 @@ export default function GameBoard({
     }
   }, [gameState.status, gameState.winner, showResults, gameEnded])
 
+  // Принудительно показываем модальное окно при завершении игры
+  useEffect(() => {
+    if ((gameState.status === "completed" || gameState.status === "draw") && !showResults) {
+      console.log(`GameBoard: Forcing modal show for completed game`);
+      setShowResults(true)
+      setGameEnded(true)
+    }
+  }, [gameState.status, gameState.winner, showResults])
+
   // Защищаем модальное окно от сброса при обновлении userData
   useEffect(() => {
     if (showResults && (gameState.status === "completed" || gameState.status === "draw")) {
@@ -162,17 +184,10 @@ export default function GameBoard({
           setBoardHighlight(winningLine)
         }
 
-        // Показываем результаты только один раз
-        if (!showResults && isComponentMounted) {
-          console.log(`GameBoard: Setting up results modal timer`);
-          const showResultsTimer = setTimeout(() => {
-            if (isComponentMounted) {
-              console.log(`GameBoard: Showing results modal`);
-              setShowResults(true)
-            }
-          }, 1000)
-
-          return () => clearTimeout(showResultsTimer)
+        // Показываем результаты немедленно
+        if (isComponentMounted) {
+          console.log(`GameBoard: Showing results modal immediately`);
+          setShowResults(true)
         }
       } catch (error) {
         console.error("Error handling game end:", error)
@@ -419,7 +434,7 @@ export default function GameBoard({
         console.log(`GameBoard: Rendering modal - showResults: ${showResults}, gameState.status: ${gameState.status}`);
         return null;
       })()}
-      {showResults && (
+      {(showResults || gameState.status === "completed" || gameState.status === "draw") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
           <Card className="w-full max-w-sm border-0 shadow-2xl animate-fade-in dark:bg-gray-800">
             <div

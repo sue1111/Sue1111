@@ -136,3 +136,32 @@ CREATE INDEX IF NOT EXISTS idx_game_activity_last_activity ON game_activity(last
 ALTER TABLE games ADD COLUMN IF NOT EXISTS paused_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS pause_reason TEXT;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS resume_at TIMESTAMP WITH TIME ZONE;
+
+-- Безопасная функция для обновления статистики пользователя
+CREATE OR REPLACE FUNCTION update_user_stats_safe(
+  p_user_id UUID,
+  p_games_played INTEGER,
+  p_games_won INTEGER,
+  p_total_winnings NUMERIC
+) RETURNS VOID AS $$
+BEGIN
+  UPDATE public.users 
+  SET 
+    games_played = p_games_played,
+    games_won = p_games_won,
+    total_winnings = p_total_winnings
+  WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Безопасная функция для обновления баланса пользователя
+CREATE OR REPLACE FUNCTION update_user_balance_safe(
+  p_user_id UUID,
+  p_new_balance NUMERIC
+) RETURNS VOID AS $$
+BEGIN
+  UPDATE public.users 
+  SET balance = p_new_balance
+  WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
