@@ -15,12 +15,7 @@ export const directSupabase = createClient<Database>(
 
 // Function for logging with timestamp
 export function logWithTimestamp(message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  if (data) {
-    console.log(`[${timestamp}] [DB_ACTIONS] ${message}`, data);
-  } else {
-    console.log(`[${timestamp}] [DB_ACTIONS] ${message}`);
-  }
+  // Logging disabled for security
 }
 
 // Function to create a game in the database

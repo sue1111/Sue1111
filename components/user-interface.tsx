@@ -25,8 +25,6 @@ interface UserInterfaceProps {
 
 // Функция для обновления баланса и статистики пользователя
 async function updateUserBalance(userId: string, newBalance: number, gamesPlayed?: number, gamesWon?: number, totalWinnings?: number) {
-  console.log(`Updating user data: userId=${userId}, newBalance=${newBalance}, gamesPlayed=${gamesPlayed}, gamesWon=${gamesWon}, totalWinnings=${totalWinnings}`);
-  
   try {
     const response = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
@@ -44,8 +42,6 @@ async function updateUserBalance(userId: string, newBalance: number, gamesPlayed
     if (!response.ok) {
       throw new Error("Failed to update user data");
     }
-
-    console.log(`Successfully updated user data for ${userId}`);
   } catch (error) {
     console.error("Error updating user data:", error);
   }
@@ -58,7 +54,6 @@ async function refreshUserData(userId: string, setUserData: (user: UserData) => 
     if (response.ok) {
       const freshUser = await response.json();
       setUserData(freshUser);
-      console.log(`Refreshed user data for ${userId}`);
     }
   } catch (error) {
     console.error("Error refreshing user data:", error);
@@ -113,7 +108,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         const gameSettingsResponse = await fetch("/api/settings?type=game-client")
         if (gameSettingsResponse.ok) {
           const gameSettings = await gameSettingsResponse.json()
-          console.log("Loaded game settings for client:", gameSettings)
           // Обновляем системные настройки с игровыми
           setSystemSettings(prev => ({
             ...prev,
@@ -157,7 +151,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       if (typeof game.board === 'string') {
         try {
           parsedBoard = JSON.parse(game.board);
-          console.log("Доска после JSON.parse:", parsedBoard);
         } catch (e) {
           console.error("Ошибка при разборе доски:", e);
           parsedBoard = Array(9).fill(null);
@@ -175,12 +168,10 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       // ВСЕГДА сохраняем ход игрока, если он был сделан недавно
       if (pendingMove && (Date.now() - pendingMove.timestamp) < 8000) { // Увеличиваем таймаут до 8 секунд
-        console.log(`🎯 Pending move detected at index ${pendingMove.index}, preserving player move`);
         const playerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
         
         // ВСЕГДА сохраняем ход игрока, даже если сервер его не видит
         finalBoard[pendingMove.index] = playerSymbol;
-        console.log(`🎯 Preserved player move: ${playerSymbol} at index ${pendingMove.index}`);
       }
       
       // Дополнительная проверка: если на доске есть ход игрока, но его нет в данных сервера,
@@ -191,12 +182,9 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       if (pendingMove && pendingMove.index >= 0 && pendingMove.index < 9) {
         const pendingPlayerSymbol = userData.id === game.players?.X?.id ? "X" : "O";
         if (finalBoard[pendingMove.index] !== pendingPlayerSymbol) {
-          console.log(`🎯 Restoring pending player move at index ${pendingMove.index}: ${pendingPlayerSymbol}`);
           finalBoard[pendingMove.index] = pendingPlayerSymbol;
         }
       }
-      
-      console.log("Итоговая доска для использования:", finalBoard);
 
       // Устанавливаем состояние игры
       let players = game.players;
@@ -204,7 +192,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       // Простая логика: если у нас есть сохраненный ник ИИ, всегда используем его
       if (aiNickname && (game.players?.O?.id?.startsWith('ai_') || game.players?.O?.id === "ai" || !game.players?.O)) {
-        console.log(`🤖 Using fixed AI nickname: ${aiNickname}`)
         players = {
           ...game.players,
           O: { 
@@ -223,7 +210,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         ];
         const username = fakeUsernames[Math.floor(Math.random() * fakeUsernames.length)];
         setAiNickname(username); // Сохраняем навсегда
-        console.log(`🤖 Generated and fixed AI nickname: ${username}`)
         
         players = {
           ...game.players,
@@ -237,7 +223,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         // Если у игрока уже есть нормальный ник и у нас нет сохраненного, сохраняем его
         if (!aiNickname && game.players.O.username !== "ИИ Оппонент" && game.players.O.username !== "Opponent") {
           setAiNickname(game.players.O.username);
-          console.log(`🤖 Fixed AI nickname from server: ${game.players.O.username}`)
         }
       }
       
@@ -252,11 +237,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         status = "waiting";
       }
       
-      console.log(`Setting game status: ${status}, winner: ${game.winner}`);
-      console.log(`Game data from server: status=${game.status}, winner=${game.winner}`);
-      console.log(`Current player from server: currentPlayer=${game.currentPlayer}, current_player=${game.current_player}`);
-      console.log(`BetAmount Debug: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}`);
-      console.log(`BetAmount Sources: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}, gameState?.betAmount=${gameState?.betAmount}`);
+
       
       // Улучшенная логика определения ставки
       let finalBetAmount = 0;
@@ -282,8 +263,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         finalPot = gameState.pot;
       }
       
-      console.log(`Final calculated values: betAmount=${finalBetAmount}, pot=${finalPot}`);
-      
       const newGameState = {
         id: game.id,
         board: finalBoard, // Используем финальную доску с сохраненными ходами
@@ -296,8 +275,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         createdAt: game.created_at || new Date().toISOString(),
       };
       
-      console.log(`New game state:`, newGameState);
-      
       try {
         setGameState(newGameState);
       } catch (error) {
@@ -306,7 +283,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       
       // Если игра завершена, не переходим на экран игры
       if (status === "completed" || status === "draw") {
-        console.log("Game is completed, staying on current screen");
         setIsLoading(false);
         return;
       }
@@ -350,10 +326,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
         if (response.ok) {
           const result = await response.json()
-          console.log('✅ Created multiplayer game:', result)
-          console.log('🎮 Game ID:', result.game.id)
-          console.log('🎮 Game status:', result.game.status)
-          console.log('💰 Bet amount:', betAmount)
           
           // Проверяем, что игра создана со статусом 'waiting'
           if (result.game.status !== 'waiting') {
@@ -368,21 +340,15 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
           
           // Показываем загрузку при переходе на экран ожидания
           setIsLoading(true)
-          console.log('⏳ Setting loading to true')
           
           // Переходим на экран ожидания
           setWaitingGameId(result.game.id)
           setWaitingBetAmount(betAmount)
           setCurrentScreen("waiting")
-          console.log('🔄 Переход на экран ожидания...')
-          console.log('📱 Current screen set to: waiting')
-          console.log('🎮 Waiting game ID set to:', result.game.id)
-          console.log('💰 Waiting bet amount set to:', betAmount)
           
           // Скрываем загрузку после короткой задержки
           setTimeout(() => {
             setIsLoading(false)
-            console.log('✅ Loading hidden, waiting screen should be visible')
           }, 300)
         } else {
           const errorData = await response.text()
@@ -419,9 +385,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
     async (gameId: string) => {
       if (!userData) return
 
-      console.log("🔧 handleJoinGame called with gameId:", gameId)
-      console.log("🔧 isConnected:", isConnected)
-
       // Пропускаем проверку подключения для fallback режима
       // if (!isConnected) {
       //   alert("Не удалось подключиться к серверу. Мультиплеер временно недоступен.")
@@ -430,7 +393,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
       // Сначала пытаемся присоединиться к игре через API
       try {
-        console.log("🔧 Joining game via API...")
         const joinResponse = await fetch(`/api/games/${gameId}/join`, {
           method: 'POST',
           headers: {
@@ -476,7 +438,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
               createdAt: gameData.created_at,
             })
             
-            console.log("🔧 Setting current screen to game")
             // Переходим к игре
             setCurrentScreen("game")
             return
@@ -492,7 +453,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
       // Если API не сработал и WebSocket доступен, используем его
       if (isConnected) {
-        console.log("🔧 Using WebSocket fallback")
         joinGame(gameId)
       } else {
         console.error("🔧 Neither API nor WebSocket worked")
@@ -536,14 +496,8 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
   // Polling для обновления состояния игры
   useEffect(() => {
-    console.log("🔧 Polling effect triggered:", { 
-      currentScreen, 
-      gameStateId: gameState.id 
-    })
-    
     // Запускаем polling если мы в игре, есть gameState.id и игра не завершена
     if (currentScreen === "game" && gameState.id && gameState.status !== "completed" && gameState.status !== "draw") {
-      console.log("🔧 Starting polling for game:", gameState.id)
       
       // Добавляем задержку перед первым polling, чтобы избежать конфликтов с ходами
       const initialDelay = setTimeout(() => {
@@ -555,20 +509,11 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
             const shouldSkipPolling = timeSinceLastMove < 5000 || isAITinking || hasPendingMove
             
             if (shouldSkipPolling) {
-              console.log("🔧 Skipping polling:", {
-                timeSinceLastMove,
-                isAITinking,
-                hasPendingMove,
-                pendingMoveAge: pendingMove ? Date.now() - pendingMove.timestamp : null
-              })
               return
             }
-            
-            console.log("🔧 Polling game state...")
             const response = await fetch(`/api/games/${gameState.id}`)
             if (response.ok) {
               const gameData = await response.json()
-              console.log("🔧 Polled game data:", gameData)
               
               // Парсим board если это строка
               let board = gameData.board
@@ -587,21 +532,18 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
               
               // Проверяем, приостановлена ли игра
               if (gameData.status === 'paused' && !isGamePaused) {
-                console.log("🔧 Game paused, showing pause modal")
                 setIsGamePaused(true)
                 setPauseData({
                   gameId: gameData.id,
                   inactivePlayers: gameData.inactive_players || []
                 })
               } else if (gameData.status === 'playing' && isGamePaused) {
-                console.log("🔧 Game resumed, hiding pause modal")
                 setIsGamePaused(false)
                 setPauseData(null)
               }
 
               // Проверяем, завершилась ли игра
               if (gameData.status === 'completed' || gameData.status === 'draw') {
-                console.log("🔧 Game completed, stopping polling and updating state")
                 // Обновляем состояние перед остановкой polling
                 setGameState(prevState => ({
                   ...prevState,
@@ -625,8 +567,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
                   gameData.status !== gameState.status ||
                   gameData.currentPlayer !== gameState.currentPlayer) {
                 
-                console.log("🔧 Game state changed, updating...")
-                
                 // Добавляем небольшую задержку для предотвращения мерцания
                 setTimeout(() => {
                   setGameState(prevState => ({
@@ -642,8 +582,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
                     createdAt: gameData.created_at,
                   }))
                 }, 200) // Увеличиваем задержку
-              } else {
-                console.log("🔧 No significant changes in game state")
               }
             } else {
               console.error("🔧 Polling failed:", response.status)
@@ -654,7 +592,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         }, 4000) // Увеличиваем интервал polling до 4 секунд
 
         return () => {
-          console.log("🔧 Stopping polling")
           clearInterval(interval)
         }
       }, 3000) // Увеличиваем начальную задержку до 3 секунд
@@ -679,11 +616,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
         return;
       }
       
-      // Дополнительная проверка и логирование
-      console.log("Тип userData.id:", typeof userData.id);
-      console.log("Значение userData.id:", userData.id);
-      console.log("Длина userData.id:", userData.id.length);
-      console.log("Все данные пользователя:", userData);
+
       
       // Проверка формата UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -752,11 +685,8 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
           return;
         }
 
-        console.log("Игра успешно создана:", responseData);
-        
         // Проверяем наличие игры в ответе
         if (responseData) {
-          console.log("Используем данные игры из ответа:", responseData);
           
           // Обновляем данные пользователя
           if (userData?.id) {
@@ -776,7 +706,6 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
           if (joinResponse.ok) {
             const joinResult = await joinResponse.json();
-            console.log('✅ AI joined the game:', joinResult);
             
             // Используем данные игры с AI
             if (joinResult.game) {

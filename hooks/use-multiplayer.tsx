@@ -52,27 +52,21 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
     if (typeof window !== 'undefined') {
       const isWebSocketAvailable = MultiplayerFallback.isWebSocketAvailable()
       setUseFallback(!isWebSocketAvailable)
-      console.log(`WebSocket available: ${isWebSocketAvailable}, using fallback: ${!isWebSocketAvailable}`)
     }
   }, [])
 
   // Инициализация сокета при монтировании компонента
   useEffect(() => {
-    console.log("🔧 useMultiplayer effect triggered:", { DISABLE_SOCKET, userData: !!userData, useFallback })
-    
     // Если сокеты отключены или используем fallback, не пытаемся подключиться к WebSocket
     if (DISABLE_SOCKET || !userData || useFallback) {
-      console.log("🔧 Skipping WebSocket connection, using fallback")
       // Инициализируем fallback если WebSocket недоступен
       if (useFallback && userData) {
         fallbackRef.current = new MultiplayerFallback()
         setIsConnected(true)
-        console.log("✅ Using multiplayer fallback system")
       } else if (DISABLE_SOCKET && userData) {
         // Если сокеты отключены, но есть пользователь, используем fallback
         fallbackRef.current = new MultiplayerFallback()
         setIsConnected(true)
-        console.log("✅ Using multiplayer fallback system (sockets disabled)")
       }
       return;
     }
@@ -83,8 +77,6 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
 
       // Устанавливаем обработчики событий
       socket.on("connect", () => {
-        console.log("✅ Socket connected in useMultiplayer")
-        console.log("🔌 Socket ID:", socket.id)
         setIsConnected(true)
 
         // Отправляем данные пользователя при подключении
@@ -96,7 +88,6 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
       })
 
       socket.on("disconnect", () => {
-        console.log("Socket disconnected")
         setIsConnected(false)
       })
 
@@ -108,7 +99,6 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
           fallbackRef.current = new MultiplayerFallback()
           setUseFallback(true)
           setIsConnected(true)
-          console.log("🔄 Switched to fallback due to WebSocket error")
         }
       })
 
@@ -194,11 +184,8 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
     (betAmount: number) => {
       if (!userData) return
 
-      console.log("🎮 createGame called:", { betAmount, useFallback, DISABLE_SOCKET })
-
       if (useFallback) {
         // В fallback режиме создаем игру через API
-        console.log("Creating game via API fallback")
         fetch('/api/games', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -206,7 +193,7 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
         }).then(response => response.json())
         .then(data => {
           if (data.success) {
-            console.log("Game created via API fallback")
+            // Game created successfully
           }
         }).catch(error => {
           console.error("Error creating game via API:", error)
@@ -221,8 +208,6 @@ export function useMultiplayer(userData: UserData | null): UseMultiplayerReturn 
         } catch (error) {
           console.error("Error creating game:", error)
         }
-      } else {
-        console.log("🎮 No fallback or socket available, cannot create game")
       }
     },
     [userData, useFallback],

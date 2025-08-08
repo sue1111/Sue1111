@@ -21,9 +21,7 @@ class SocketManager {
     
     try {
       const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin
-      console.log('🔌 Attempting to connect to WebSocket at:', socketUrl)
-      console.log('🔌 NEXT_PUBLIC_SOCKET_URL:', process.env.NEXT_PUBLIC_SOCKET_URL)
-      console.log('🔌 window.location.origin:', window.location.origin)
+      
 
       if (!socketUrl) {
         console.error("Socket URL is not defined")
@@ -54,16 +52,12 @@ class SocketManager {
       })
 
       this.socket.on("connect", () => {
-        console.log("✅ Socket connected successfully")
-        console.log("🔌 Socket ID:", this.socket?.id)
         // Сбрасываем счетчики при успешном подключении
         this.reconnectAttempts = 0
         this.reconnectDelay = 1000
       })
 
       this.socket.on("disconnect", (reason) => {
-        console.log("Socket disconnected:", reason)
-
         // Если сервер закрыл соединение, пытаемся переподключиться
         if (reason === "io server disconnect") {
           this.socket?.connect()

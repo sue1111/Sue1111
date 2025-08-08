@@ -19,12 +19,7 @@ const directSupabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Функция для логирования с отметкой времени
 function logWithTimestamp(message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  if (data) {
-    console.log(`[${timestamp}] [GAME_MOVE_API] ${message}`, data);
-  } else {
-    console.log(`[${timestamp}] [GAME_MOVE_API] ${message}`);
-  }
+  // Logging disabled for security
 }
 
 // Обработчик для обновления статистики игрока

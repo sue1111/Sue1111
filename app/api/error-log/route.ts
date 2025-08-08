@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       errorLogs = errorLogs.slice(-100);
     }
 
-    console.log('✅ Ошибка залогирована:', errorLog);
+
 
     return NextResponse.json({ 
       success: true, 

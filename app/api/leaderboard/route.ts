@@ -17,12 +17,7 @@ const directSupabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Функция для логирования с отметкой времени
 function logWithTimestamp(message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  if (data) {
-    console.log(`[${timestamp}] [LEADERBOARD_API] ${message}`, data);
-  } else {
-    console.log(`[${timestamp}] [LEADERBOARD_API] ${message}`);
-  }
+  // Logging disabled for security
 }
 
 export async function GET(request: Request) {

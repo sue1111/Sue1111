@@ -86,7 +86,7 @@ export async function PATCH(request: Request) {
       
       const userDataTyped = userData as any
       const newBalance = Number(userDataTyped.balance) + amountToCredit
-      console.log(`Approving deposit: user ${notificationData.user_id}, old balance: ${userDataTyped.balance}, deposit: ${depositAmount}, fee: ${depositFeePercentage}%, commission: ${commission}, amount to credit: ${amountToCredit}, new balance: ${newBalance}`)
+
 
       // Update user balance (deposit amount minus commission)
       const { error: balError } = await supabase
@@ -143,7 +143,7 @@ export async function PATCH(request: Request) {
 
     // If rejected, just update status and delete notification
     if ((notification as any).type === "deposit_request" && status === "rejected") {
-      console.log(`Deposit request ${notificationId} rejected by admin ${adminId}`)
+
       
       // Удаляем отклоненное уведомление из базы данных
       const { error: deleteError } = await supabase

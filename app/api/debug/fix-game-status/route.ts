@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
     }
     
-    console.log(`Found ${waitingGames?.length || 0} waiting games to fix`)
+
     
     // Обновляем статус на "playing"
     const { error: updateError } = await supabase
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     if (completedError) {
       console.error("Error fetching completed games:", completedError)
     } else {
-      console.log(`Found ${completedGames?.length || 0} games with winners that should be completed`)
+  
       
       // Обновляем статус на "completed" для игр с победителями
       const { error: completeError } = await supabase

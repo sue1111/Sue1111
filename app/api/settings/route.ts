@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const adminId = searchParams.get("adminId")
 
     // Log the request for debugging
-    console.log(`Settings request - type: ${type}, adminId: ${adminId || "not provided"}`)
+
 
     const supabase = getSupabaseServerClient()
 
@@ -184,7 +184,7 @@ export async function PATCH(request: Request) {
       dbUpdates.updated_at = new Date().toISOString()
 
       // Log the update operation for debugging
-      console.log("Updating system settings with:", dbUpdates)
+
 
       // First, check if a record exists
       const { data: existingRecord } = await supabase
@@ -227,7 +227,7 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Failed to update system settings", details: error }, { status: 500 })
       }
 
-      console.log("Settings updated successfully:", data)
+      
 
       // Fetch and return updated settings
       const { data: updatedData, error: fetchError } = await supabase
@@ -279,7 +279,7 @@ export async function POST(request: Request) {
     const botWinProbability = Number.parseFloat(settings.difficultyLevel) || 50
     const maxWinsPerUser = settings.maxWinsPerUser
 
-    console.log(`Saving game settings: botWinProbability=${botWinProbability}, maxWinsPerUser=${maxWinsPerUser}`)
+    
 
     // Проверяем, существует ли запись в system_settings
     const { data: existingRecord } = await supabase
@@ -332,7 +332,7 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("Game settings saved successfully")
+    
 
     // Возвращаем сохраненные настройки
     return NextResponse.json({

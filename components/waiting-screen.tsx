@@ -18,14 +18,9 @@ export default function WaitingScreen({ gameId, betAmount, userData, onGameStart
   const [isJoiningAI, setIsJoiningAI] = useState(false)
   const [status, setStatus] = useState<'waiting' | 'joining' | 'starting'>('waiting')
 
-  console.log("🎮 WaitingScreen mounted:", { gameId, betAmount, userData: !!userData })
-
   // Автоматическое подключение ИИ через 11 секунд
   useEffect(() => {
-    console.log(`⏰ Автоматическое подключение ИИ через 11 секунд`)
-    
     const timer = setTimeout(() => {
-      console.log('🤖 Время вышло, подключаем ИИ...')
       setStatus('joining')
       joinAI()
     }, 11000) // Увеличили до 11 секунд
@@ -40,9 +35,7 @@ export default function WaitingScreen({ gameId, betAmount, userData, onGameStart
         const response = await fetch(`/api/games/${gameId}`)
         if (response.ok) {
           const gameData = await response.json()
-          console.log('🔍 Checking game status:', gameData.status, 'for game:', gameId)
           if (gameData.status === 'playing') {
-            console.log('🎮 Game status changed to playing, starting game...')
             setStatus('starting')
             // Удаляем игру из лобби перед стартом
             await fetch(`/api/games/lobby`, {
@@ -71,7 +64,6 @@ export default function WaitingScreen({ gameId, betAmount, userData, onGameStart
       return
     }
 
-    console.log('🤖 Подключаем ИИ к игре:', gameId)
     setIsJoiningAI(true)
     
     try {
@@ -84,17 +76,13 @@ export default function WaitingScreen({ gameId, betAmount, userData, onGameStart
           userId: userData.id
         })
       })
-
-      console.log('📊 Статус ответа ИИ:', response.status)
       
       if (response.ok) {
         const result = await response.json()
-        console.log('✅ AI joined the game:', result)
         setStatus('starting')
         
         // Проверяем, что у нас есть правильные данные игры
         if (result.game && result.game.id) {
-          console.log('🎮 Starting game with data:', result.game)
           onGameStart(result.game)
         } else {
           console.error('❌ Invalid game data in response:', result)

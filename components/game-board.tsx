@@ -61,28 +61,7 @@ export default function GameBoard({
   const playerSymbol = userData ? (gameState.players.X.id === userData.id ? "X" : "O") : "X"
   const isPlayerTurn = gameState.currentPlayer === playerSymbol
   
-  // Добавляем логирование для отладки betAmount
-  useEffect(() => {
-    if (gameState.status === "completed" || gameState.status === "draw") {
-      console.log(`🎮 BetAmount Debug:`, {
-        gameStateBetAmount: gameState.betAmount,
-        gameStatePot: gameState.pot,
-        calculatedBetAmount: betAmount,
-        safeBetAmount: safeBetAmount,
-        calculatedPot: pot,
-        gameState: gameState,
-        gameStatus: gameState.status,
-        gameWinner: gameState.winner,
-        didPlayerWin: gameState.winner === playerSymbol,
-        userDataBalance: userData?.balance
-      });
-      
-      // Дополнительная проверка: если ставка не определена, попробуем получить её из банка
-      if (!gameState.betAmount && gameState.pot) {
-        console.log(`🎮 Attempting to calculate bet amount from pot: ${gameState.pot} / 2 = ${gameState.pot / 2}`);
-      }
-    }
-  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, safeBetAmount, pot, gameState.winner, playerSymbol, userData?.balance]);
+
 
   const [showResults, setShowResults] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15)
@@ -94,36 +73,9 @@ export default function GameBoard({
   // Определяем имя противника
   const opponentName = gameState.players.O?.username || "Opponent"
   
-  // Логируем отображение ника противника
-  useEffect(() => {
-    console.log(`🎮 Opponent name: "${opponentName}", ID: "${gameState.players.O?.id}"`)
-  }, [opponentName, gameState.players.O?.id])
 
-  // Добавляем логирование для отладки только при значительных изменениях
-  useEffect(() => {
-    console.log("🎮 GameBoard Debug:", {
-      userDataId: userData?.id,
-      playersX: gameState.players.X?.id,
-      playersO: gameState.players.O?.id,
-      playerSymbol,
-      currentPlayer: gameState.currentPlayer,
-      isPlayerTurn,
-      gameStatePlayers: gameState.players
-    })
-  }, [gameState.board, gameState.status, gameState.currentPlayer, userData?.id])
 
-  // Демонстрационная логика паузы (для тестирования)
-  useEffect(() => {
-    if (gameState.status === "playing" && isMultiplayer) {
-      // Симулируем паузу через 30 секунд для демонстрации
-      const pauseTimer = setTimeout(() => {
-        console.log("🎮 Demo: Simulating game pause")
-        // Здесь можно вызвать функцию паузы
-      }, 30000)
 
-      return () => clearTimeout(pauseTimer)
-    }
-  }, [gameState.status, isMultiplayer])
 
   // Устанавливаем флаг монтирования компонента
   useEffect(() => {
@@ -136,7 +88,6 @@ export default function GameBoard({
   // Сбрасываем gameEnded когда начинается новая игра
   useEffect(() => {
     if (gameState.status === "playing") {
-      console.log(`GameBoard: Resetting game states for new game`);
       setGameEnded(false)
       setShowResults(false)
     }
@@ -145,9 +96,7 @@ export default function GameBoard({
   // Не сбрасываем модальное окно, если игра уже завершена
   useEffect(() => {
     if ((gameState.status === "completed" || gameState.status === "draw") && !showResults && !gameEnded) {
-      console.log(`GameBoard: Game completed but modal not shown yet, setting up timer`);
       const timer = setTimeout(() => {
-        console.log(`GameBoard: Showing results modal after completion`);
         setShowResults(true)
         setGameEnded(true)
       }, 1000)
@@ -159,29 +108,13 @@ export default function GameBoard({
   // Принудительно показываем модальное окно при завершении игры
   useEffect(() => {
     if ((gameState.status === "completed" || gameState.status === "draw") && !showResults) {
-      console.log(`GameBoard: Forcing modal show for completed game`);
       setShowResults(true)
       setGameEnded(true)
     }
   }, [gameState.status, gameState.winner, showResults])
 
-  // Защищаем модальное окно от сброса при обновлении userData
-  useEffect(() => {
-    if (showResults && (gameState.status === "completed" || gameState.status === "draw")) {
-      console.log(`GameBoard: Modal is shown, protecting from reset`);
-      console.log(`GameBoard: Modal userData:`, userData);
-    }
-  }, [userData, showResults, gameState.status])
-
-  // Добавляем логирование для отладки состояния модального окна
-  useEffect(() => {
-    console.log(`GameBoard: Modal state - showResults: ${showResults}, gameEnded: ${gameEnded}, status: ${gameState.status}`);
-  }, [showResults, gameEnded, gameState.status])
-
   // Таймер для ходов
   useEffect(() => {
-    console.log(`GameBoard: gameState.status = ${gameState.status}, isPlayerTurn = ${isPlayerTurn}`);
-    
     if (gameState.status === "playing" && isPlayerTurn) {
       const timer = setInterval(() => {
         if (!isComponentMounted) {
@@ -214,7 +147,6 @@ export default function GameBoard({
     }
 
     if ((gameState.status === "completed" || gameState.status === "draw") && !gameEnded) {
-      console.log(`GameBoard: Game ended with status ${gameState.status}, winner: ${gameState.winner}`);
       setGameEnded(true)
       
       try {
@@ -226,14 +158,12 @@ export default function GameBoard({
 
         // Показываем результаты немедленно
         if (isComponentMounted) {
-          console.log(`GameBoard: Showing results modal immediately`);
           setShowResults(true)
         }
       } catch (error) {
         console.error("Error handling game end:", error)
         // В случае ошибки все равно показываем результаты
         if (isComponentMounted) {
-          console.log(`GameBoard: Showing results modal due to error`);
           setShowResults(true)
         }
       }
@@ -251,31 +181,10 @@ export default function GameBoard({
 
   const handleCellClick = (index: number) => {
     try {
-      console.log("🎯 Cell clicked:", { 
-        index, 
-        isPlayerTurn, 
-        status: gameState.status, 
-        cellValue: gameState.board[index],
-        currentPlayer: gameState.currentPlayer,
-        playerSymbol
-      })
-      
       // Проверяем, что игра активна и можно делать ход
       if (isPlayerTurn && gameState.status === "playing" && gameState.board[index] === null) {
-        console.log("🎯 Making move at position:", index)
         setLastMove(index)
         onMakeMove(index)
-      } else {
-        console.log("🎯 Cannot make move:", { 
-          isPlayerTurn, 
-          status: gameState.status, 
-          cellValue: gameState.board[index] 
-        })
-        
-        // Если игра завершена, показываем сообщение
-        if (gameState.status === "completed" || gameState.status === "draw") {
-          console.log("🎯 Game is already finished, cannot make move")
-        }
       }
     } catch (error) {
       console.error("Error in handleCellClick:", error)
@@ -356,12 +265,7 @@ export default function GameBoard({
   // Определяем, выиграл ли текущий игрок
   const didPlayerWin = gameState.winner === playerSymbol
   
-  // Добавляем логирование для отладки
-  useEffect(() => {
-    if (gameState.status === "completed" || gameState.status === "draw") {
-      console.log(`GameBoard: Win check - winner: ${gameState.winner}, playerSymbol: ${playerSymbol}, didPlayerWin: ${didPlayerWin}`);
-    }
-  }, [gameState.status, gameState.winner, playerSymbol, didPlayerWin])
+
 
   // Безопасная обработка закрытия модального окна
   const handleCloseResults = () => {

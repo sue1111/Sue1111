@@ -43,7 +43,7 @@ function validateAndLimitNumericValue(value: number, type: 'balance' | 'games_pl
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const userId = params.id
-    console.log(`Fetching user data for ID: ${userId}`)
+
 
     // БЕЗОПАСНОСТЬ: Валидация UUID
     if (!userId || !isValidUUID(userId)) {
@@ -64,7 +64,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    console.log(`User data retrieved successfully for ID ${userId}:`, data)
+    
     
     // Получаем данные из заголовков запроса
     const requestHeaders = new Headers(request.headers);
@@ -76,7 +76,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       try {
         const parsedBalance = parseFloat(clientBalanceHeader);
         clientBalance = validateAndLimitNumericValue(parsedBalance, 'balance');
-        console.log(`Client provided balance in header: ${clientBalance} (original: ${clientBalanceHeader})`);
+
       } catch (e) {
         console.error(`Failed to parse client balance from header: ${clientBalanceHeader}`);
       }
@@ -89,7 +89,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       try {
         const parsedGamesPlayed = parseInt(clientGamesPlayedHeader, 10);
         clientGamesPlayed = validateAndLimitNumericValue(parsedGamesPlayed, 'games_played');
-        console.log(`Client provided games_played in header: ${clientGamesPlayed} (original: ${clientGamesPlayedHeader})`);
+
       } catch (e) {
         console.error(`Failed to parse client games_played from header: ${clientGamesPlayedHeader}`);
       }
@@ -102,7 +102,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       try {
         const parsedGamesWon = parseInt(clientGamesWonHeader, 10);
         clientGamesWon = validateAndLimitNumericValue(parsedGamesWon, 'games_won');
-        console.log(`Client provided games_won in header: ${clientGamesWon} (original: ${clientGamesWonHeader})`);
+
       } catch (e) {
         console.error(`Failed to parse client games_won from header: ${clientGamesWonHeader}`);
       }
@@ -115,7 +115,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       try {
         const parsedTotalWinnings = parseFloat(clientTotalWinningsHeader);
         clientTotalWinnings = validateAndLimitNumericValue(parsedTotalWinnings, 'total_winnings');
-        console.log(`Client provided total_winnings in header: ${clientTotalWinnings} (original: ${clientTotalWinningsHeader})`);
+
       } catch (e) {
         console.error(`Failed to parse client total_winnings from header: ${clientTotalWinningsHeader}`);
       }
@@ -146,7 +146,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Проверяем баланс
     if (clientBalance !== null && data.balance !== clientBalance) {
       if (data.balance === 0 || data.balance === 100 || data.balance === 500 || data.balance === 840) {
-        console.log(`Balance reset detected. Server: ${data.balance}, Client: ${clientBalance}`);
+
         data.balance = clientBalance;
         needsUpdate = true;
       }
@@ -155,7 +155,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Проверяем games_played
     if (clientGamesPlayed !== null && data.games_played !== clientGamesPlayed) {
       if (data.games_played === 0) {
-        console.log(`Games played reset detected. Server: ${data.games_played}, Client: ${clientGamesPlayed}`);
+
         data.games_played = clientGamesPlayed;
         needsUpdate = true;
       }
@@ -164,7 +164,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Проверяем games_won
     if (clientGamesWon !== null && data.games_won !== clientGamesWon) {
       if (data.games_won === 0) {
-        console.log(`Games won reset detected. Server: ${data.games_won}, Client: ${clientGamesWon}`);
+
         data.games_won = clientGamesWon;
         needsUpdate = true;
       }
@@ -173,7 +173,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Проверяем total_winnings
     if (clientTotalWinnings !== null && (data.total_winnings || 0) !== clientTotalWinnings) {
       if ((data.total_winnings || 0) === 0) {
-        console.log(`Total winnings reset detected. Server: ${data.total_winnings || 0}, Client: ${clientTotalWinnings}`);
+
         data.total_winnings = clientTotalWinnings;
         needsUpdate = true;
       }
@@ -181,7 +181,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     
     // Если обнаружен сброс данных, обновляем их в базе данных
     if (needsUpdate) {
-      console.log(`Restoring user data in database for ${userId}`);
+
       
           try {
             // Отключаем триггеры перед обновлением
@@ -223,7 +223,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
               sql: `SET session_replication_role = 'origin';`
             });
             
-        console.log(`User data restored successfully`);
+
       } catch (sqlError) {
         console.error(`Error during user data restoration:`, sqlError);
       }
@@ -245,7 +245,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       lastLogin: data.last_login || undefined,
     }
 
-    console.log(`Returning user data with balance: ${userData.balance}, games_played: ${userData.gamesPlayed}, games_won: ${userData.gamesWon}, total_winnings: ${userData.totalWinnings}`)
+
 
     return NextResponse.json(userData)
   } catch (error) {
@@ -257,7 +257,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const userId = params.id
-    console.log(`Updating user data for ID: ${userId}`)
+
 
     // БЕЗОПАСНОСТЬ: Валидация UUID
     if (!userId || !isValidUUID(userId)) {
@@ -271,7 +271,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const { balance, direct, gamesPlayed, gamesWon, totalWinnings } = await request.json()
-    console.log(`Received update request: balance=${balance}, direct=${direct}, gamesPlayed=${gamesPlayed}, gamesWon=${gamesWon}, totalWinnings=${totalWinnings}`)
+    
 
     // Проверяем и ограничиваем входящие значения
     let validatedBalance: number | undefined = undefined;
@@ -325,7 +325,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    console.log(`Current user data: balance=${userData.balance}, games_played=${userData.games_played}, games_won=${userData.games_won}, total_winnings=${userData.total_winnings || 0}`)
+    
 
     // Проверка на подозрительные значения
     if (validatedBalance !== undefined && validatedGamesPlayed !== undefined) {
@@ -362,11 +362,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updateData.total_winnings = validatedTotalWinnings;
     }
     
-    console.log(`Update data:`, updateData);
+    
 
     // Если запрос с флагом direct=true, используем прямой SQL-запрос
     if (direct) {
-      console.log(`Using direct update method with disabled triggers`)
+      
       
       try {
         // Отключаем триггеры перед обновлением
@@ -390,7 +390,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           sql: `SET session_replication_role = 'origin';`
         });
         
-        console.log(`Direct update successful`);
+
         
         // Проверяем, что обновление прошло успешно
         const { data: verifyData, error: verifyError } = await directSupabase
@@ -402,14 +402,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         if (verifyError) {
           console.error(`Failed to verify update:`, verifyError);
         } else {
-          console.log(`Verified user data after update:`, verifyData);
+  
           
           // Проверяем, что баланс обновился правильно
           if (validatedBalance !== undefined && verifyData.balance !== validatedBalance) {
             console.error(`Balance verification failed: actual=${verifyData.balance}, expected=${validatedBalance}`);
             
             // Пробуем еще раз с максимальными привилегиями
-            console.log(`Retrying update with maximum privileges`);
+    
             
             try {
               await directSupabase.rpc('force_update_user_balance', {
@@ -417,7 +417,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
                 p_new_balance: validatedBalance
               });
               
-              console.log(`Force update successful`);
+      
             } catch (forceError) {
               console.error(`Force update failed:`, forceError);
             }
@@ -450,11 +450,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           return NextResponse.json({ error: "Failed to update user data" }, { status: 500 });
         }
         
-        console.log(`Standard update successful`);
+
       }
     } else {
       // Обычное обновление через Supabase API
-      console.log(`Using standard update method`);
+      
       
       const { error: updateError } = await directSupabase
         .from("users")
@@ -466,7 +466,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         return NextResponse.json({ error: "Failed to update user data" }, { status: 500 });
       }
       
-      console.log(`Standard update successful`);
+      
     }
 
     // Получаем обновленные данные пользователя
@@ -488,7 +488,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         totalWinnings: validatedTotalWinnings
       }
       
-      console.log(`Returning assumed user data:`, userData)
+
       return NextResponse.json(userData)
     }
 
@@ -508,7 +508,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       lastLogin: updatedUser.last_login || undefined,
     }
 
-    console.log(`User data updated successfully:`, responseData)
+
 
     return NextResponse.json(responseData)
   } catch (error) {
