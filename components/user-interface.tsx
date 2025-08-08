@@ -258,14 +258,40 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       console.log(`BetAmount Debug: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}`);
       console.log(`BetAmount Sources: game.bet_amount=${game.bet_amount}, game.betAmount=${game.betAmount}, betAmount=${betAmount}, game.pot=${game.pot}, gameState?.betAmount=${gameState?.betAmount}`);
       
+      // Улучшенная логика определения ставки
+      let finalBetAmount = 0;
+      if (game.bet_amount && game.bet_amount > 0) {
+        finalBetAmount = game.bet_amount;
+      } else if (game.betAmount && game.betAmount > 0) {
+        finalBetAmount = game.betAmount;
+      } else if (betAmount && betAmount > 0) {
+        finalBetAmount = betAmount;
+      } else if (game.pot && game.pot > 0) {
+        finalBetAmount = game.pot / 2;
+      } else if (gameState?.betAmount && gameState.betAmount > 0) {
+        finalBetAmount = gameState.betAmount;
+      }
+      
+      // Улучшенная логика определения банка
+      let finalPot = 0;
+      if (game.pot && game.pot > 0) {
+        finalPot = game.pot;
+      } else if (finalBetAmount > 0) {
+        finalPot = finalBetAmount * 2;
+      } else if (gameState?.pot && gameState.pot > 0) {
+        finalPot = gameState.pot;
+      }
+      
+      console.log(`Final calculated values: betAmount=${finalBetAmount}, pot=${finalPot}`);
+      
       const newGameState = {
         id: game.id,
         board: finalBoard, // Используем финальную доску с сохраненными ходами
         currentPlayer: game.currentPlayer || game.current_player || "X",
         players,
         status,
-        betAmount: game.bet_amount || game.betAmount || betAmount || (game.pot ? game.pot / 2 : 0) || gameState?.betAmount || 0,
-        pot: game.pot || (game.bet_amount ? game.bet_amount * 2 : betAmount * 2) || gameState?.pot || 0,
+        betAmount: finalBetAmount,
+        pot: finalPot,
         winner: game.winner || null,
         createdAt: game.created_at || new Date().toISOString(),
       };
@@ -1019,13 +1045,14 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
               result.game.winner === playerSymbol) {
             try {
               // Выигрыш - добавляем весь банк к текущему балансу
-              const winnings = result.game.pot;
+              const winnings = result.game.pot || result.game.bet_amount * 2 || gameState.pot || gameState.betAmount * 2 || 0;
               const newBalance = previousBalance + winnings;
               const newGamesPlayed = userData.gamesPlayed + 1;
               const newGamesWon = userData.gamesWon + 1;
               const newTotalWinnings = (userData.totalWinnings || 0) + winnings;
               
               console.log(`Game won. Updating balance: ${previousBalance} + ${winnings} = ${newBalance}`);
+              console.log(`Winnings calculation: result.game.pot=${result.game.pot}, result.game.bet_amount=${result.game.bet_amount}, gameState.pot=${gameState.pot}, gameState.betAmount=${gameState.betAmount}`);
               
               console.log(`Updated user data in DB after win`);
               
@@ -1058,11 +1085,12 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
           if (result.game.status === "draw") {
             try {
               // Ничья - возвращаем ставку
-              const refund = result.game.bet_amount;
+              const refund = result.game.bet_amount || gameState.betAmount || 0;
               const newBalance = previousBalance + refund;
               const newGamesPlayed = userData.gamesPlayed + 1;
               
               console.log(`Game draw. Updating balance: ${previousBalance} + ${refund} = ${newBalance}`);
+              console.log(`Refund calculation: result.game.bet_amount=${result.game.bet_amount}, gameState.betAmount=${gameState.betAmount}`);
               
               console.log(`Updated user data in DB after draw`);
               

@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       player_o: null,
       status: "playing", // Игры против AI сразу начинаются
       bet_amount: betAmount,
-      pot: betAmount,
+      pot: betAmount * 2, // Банк равен удвоенной ставке (ставка игрока + ставка AI)
       players: {
         X: {
           id: userId,

@@ -33,7 +33,7 @@ export default function GameBoard({
   
   // Функция для безопасного получения ставки с дополнительными проверками
   const getSafeBetAmount = () => {
-    // Приоритет: gameState.betAmount > pot/2 > 0
+    // Улучшенная логика определения ставки с приоритетами
     if (gameState.betAmount && gameState.betAmount > 0) {
       return gameState.betAmount;
     }
@@ -41,6 +41,17 @@ export default function GameBoard({
       return gameState.pot / 2;
     }
     // Если ничего не найдено, возвращаем 0
+    return 0;
+  };
+  
+  // Дополнительная функция для получения безопасного банка
+  const getSafePot = () => {
+    if (gameState.pot && gameState.pot > 0) {
+      return gameState.pot;
+    }
+    if (gameState.betAmount && gameState.betAmount > 0) {
+      return gameState.betAmount * 2;
+    }
     return 0;
   };
   
@@ -62,10 +73,16 @@ export default function GameBoard({
         gameState: gameState,
         gameStatus: gameState.status,
         gameWinner: gameState.winner,
-        didPlayerWin: gameState.winner === playerSymbol
+        didPlayerWin: gameState.winner === playerSymbol,
+        userDataBalance: userData?.balance
       });
+      
+      // Дополнительная проверка: если ставка не определена, попробуем получить её из банка
+      if (!gameState.betAmount && gameState.pot) {
+        console.log(`🎮 Attempting to calculate bet amount from pot: ${gameState.pot} / 2 = ${gameState.pot / 2}`);
+      }
     }
-  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, safeBetAmount, pot, gameState.winner, playerSymbol]);
+  }, [gameState.status, gameState.betAmount, gameState.pot, betAmount, safeBetAmount, pot, gameState.winner, playerSymbol, userData?.balance]);
 
   const [showResults, setShowResults] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15)
@@ -483,7 +500,7 @@ export default function GameBoard({
               <div className="mb-4">
                 {didPlayerWin && (
                   <p className="text-gray-600 dark:text-gray-300">
-                    Congratulations! You won ${(safeBetAmount * 2).toFixed(2)} (2x your bet).
+                    Congratulations! You won ${getSafePot().toFixed(2)} (2x your bet).
                   </p>
                 )}
 
@@ -511,6 +528,7 @@ export default function GameBoard({
                     <div className="font-bold text-primary">${userData?.balance?.toFixed(2) || "0.00"}</div>
                   </div>
                 </div>
+
               </div>
 
               <div className="flex justify-between">

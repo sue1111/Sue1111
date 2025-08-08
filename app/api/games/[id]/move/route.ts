@@ -393,8 +393,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       
       logWithTimestamp(`Winner user ID: ${winnerUserId}, Loser user ID: ${loserUserId}`);
 
-      // Победитель получает свою ставку + ставку противника = удвоенную ставку
-              const winnings = gameData.bet_amount + gameData.bet_amount
+      // Победитель получает весь банк (ставка игрока + ставка противника)
+      const winnings = gameData.pot || (gameData.bet_amount * 2)
       
       logWithTimestamp(`Processing payout: bet_amount=${gameData.bet_amount}, winnings=${winnings} (2x bet)`);
       logWithTimestamp(`Winner user ID: ${winnerUserId}, bet_amount: ${gameData.bet_amount}, winnings: ${winnings}`);
@@ -539,9 +539,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
       logWithTimestamp(`Game ended in a draw`);
 
       // Возвращаем ставки игрокам
-      const refundAmount = gameData.bet_amount
+      const refundAmount = gameData.bet_amount || (gameData.pot / 2)
       
-      logWithTimestamp(`Processing refunds: amount=${refundAmount}`);
+      logWithTimestamp(`Processing refunds: amount=${refundAmount} (bet_amount: ${gameData.bet_amount}, pot: ${gameData.pot})`);
 
       // Обрабатываем возврат для первого игрока
       const { data: player1Data, error: player1Error } = await directSupabase
@@ -710,10 +710,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 created_at: new Date().toISOString()
               })
           } else {
-            // Игрок выиграл - получает обратно свою ставку + выигрыш (удвоенную сумму)
-            const winnings = gameData.bet_amount + gameData.bet_amount // Получаем обратно свою ставку + выигрыш
+            // Игрок выиграл - получает весь банк (ставка игрока + ставка AI)
+            const winnings = gameData.pot || (gameData.bet_amount * 2)
             
-            logWithTimestamp(`Player won against AI, winnings: ${winnings} (2x bet)`);
+            logWithTimestamp(`Player won against AI, winnings: ${winnings} (pot: ${gameData.pot}, bet_amount: ${gameData.bet_amount})`);
             
             // Обновляем баланс и статистику в одном запросе
             const { data: winnerData } = await directSupabase
@@ -762,9 +762,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
           logWithTimestamp(`Game ended in a draw after AI move`);
           
           // Возвращаем ставку игроку (деньги уже сняты при создании игры)
-          const refundAmount = gameData.bet_amount
+          const refundAmount = gameData.bet_amount || (gameData.pot / 2)
           
-          logWithTimestamp(`Refunding player bet: ${refundAmount}`);
+          logWithTimestamp(`Refunding player bet: ${refundAmount} (bet_amount: ${gameData.bet_amount}, pot: ${gameData.pot})`);
           
           const { data: playerData } = await directSupabase
             .from("users")

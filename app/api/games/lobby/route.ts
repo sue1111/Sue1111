@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       player_x: userId,
       player_o: null,
       bet_amount: betAmount,
-      pot: betAmount,
+      pot: betAmount * 2, // Банк равен удвоенной ставке (ставка первого игрока + ставка второго игрока)
       status: 'waiting',
       board: JSON.stringify(Array(9).fill(null)),
       current_player: 'X',
