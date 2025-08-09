@@ -1371,7 +1371,7 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
       {currentScreen === "lobby" && (
         <LobbyScreen
           onJoinGame={handleJoinGame}
-          onCreateGame={() => setCurrentScreen("home")}
+          onCreateGame={handleCreateBotGame}
           onBack={() => setCurrentScreen("home")}
           userData={userData}
         />

@@ -76,8 +76,8 @@ export default function HomeScreen({ onCreateGame, onCreateMultiplayerGame, onNa
     setShowGameModal(false)
     
     try {
-      // Создаем мультиплеер игру вместо игры против ИИ
-      await onCreateMultiplayerGame(betAmount)
+      // Создаем игру против ИИ
+      await onCreateGame(betAmount)
     } catch (error) {
       console.error('Error creating game:', error)
       alert('Failed to create game. Please try again.')
