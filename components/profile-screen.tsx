@@ -156,6 +156,31 @@ export default function ProfileScreen({ userData, onNavigate, onLogout, setUserD
         })
         
         setShowDepositModal(false)
+        
+        // Запускаем проверку баланса каждые 3 секунды после создания ссылки
+        const checkPayment = setInterval(async () => {
+          try {
+            const userResponse = await fetch(`/api/users/${userData.id}`)
+            if (userResponse.ok) {
+              const freshUserData = await userResponse.json()
+              if (freshUserData.balance > userData.balance) {
+                // Баланс обновился - платеж прошел успешно
+                setUserData(freshUserData)
+                clearInterval(checkPayment)
+                toast({
+                  title: "Payment Successful! ⭐",
+                  description: `Your balance has been updated: +$${freshUserData.balance - userData.balance}`,
+                })
+              }
+            }
+          } catch (error) {
+            console.error("Error checking payment:", error)
+          }
+        }, 3000)
+        
+        // Останавливаем проверку через 5 минут
+        setTimeout(() => clearInterval(checkPayment), 300000)
+        
       } else {
         throw new Error("Invalid response from server.")
       }
