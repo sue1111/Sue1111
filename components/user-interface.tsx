@@ -1303,6 +1303,10 @@ const UserInterface = memo(({ userData, setUserData, onAdminRequest, onLogout, o
 
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
+      {/* DEV версия индикатор */}
+      <div className="fixed top-4 right-4 z-40 bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+        DEV
+      </div>
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="rounded-xl bg-white p-8 shadow-xl dark:bg-gray-800 flex flex-col items-center">
