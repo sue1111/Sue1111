@@ -19,9 +19,7 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [showPasswordField, setShowPasswordField] = useState(false)
   const [error, setError] = useState("")
-  const [email, setEmail] = useState("")
 
   const supabase = useSupabaseClient()
 
@@ -32,227 +30,108 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
     setIsLoading(false)
   }
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setUsername(value)
-    if (value.trim() !== "") {
-      setShowPasswordField(true)
-    } else {
-      setShowPasswordField(false)
-      setPassword("")
-    }
-  }
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value)
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
     try {
-      // Проверяем, какой способ входа используется
-      if (email && password) {
-        // === SUPABASE AUTH (EMAIL) ===
-        try {
-          // Сначала пробуем войти
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
+      if (!username || !password) {
+        throw new Error("Please enter username and password.")
+      }
 
-          // Если вход успешен
-          if (!signInError && signInData) {
-            // Получаем профиль пользователя
-            const { data: userProfile, error: userProfileError } = await supabase
-              .from("users")
-              .select("*")
-              .eq("email", email)
-              .single()
+      // Сначала проверяем, существует ли пользователь с таким username
+      const { data: existingUser, error: findError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", username)
+        .single()
 
-            if (userProfileError || !userProfile) {
-              // Если профиль не найден — создаём его
-              const userId = signInData.user?.id
-              const { data: createdProfile, error: createProfileError } = await supabase
-                .from("users")
-                .insert({
-                  id: userId,
-                  username: username || email.split("@")[0],
-                  email,
-                  avatar: null,
-                  balance: 0,
-                  games_played: 0,
-                  games_won: 0,
-                  wallet_address: null,
-                  is_admin: false,
-                  status: "active",
-                  created_at: new Date().toISOString(),
-                  last_login: new Date().toISOString(),
-                })
-                .select()
-                .single()
+      if (findError && findError.code !== "PGRST116") {
+        // PGRST116 = no rows found, это нормально для регистрации
+        throw findError
+      }
 
-              if (createProfileError || !createdProfile) {
-                throw new Error(createProfileError?.message || "Failed to create user profile")
-              }
-
-              onLogin({
-                id: createdProfile.id,
-                username: createdProfile.username,
-                password: "",
-                balance: createdProfile.balance,
-                avatar: createdProfile.avatar,
-                gamesPlayed: createdProfile.games_played,
-                gamesWon: createdProfile.games_won,
-                walletAddress: createdProfile.wallet_address || undefined,
-                isAdmin: createdProfile.is_admin,
-                status: createdProfile.status,
-                createdAt: createdProfile.created_at,
-                lastLogin: createdProfile.last_login,
-                totalWinnings: createdProfile.total_winnings || 0,
-              })
-              return
-            }
-
-            // Если профиль найден, логиним пользователя
-            onLogin({
-              id: userProfile.id,
-              username: userProfile.username,
-              password: "",
-              balance: userProfile.balance,
-              avatar: userProfile.avatar,
-              gamesPlayed: userProfile.games_played,
-              gamesWon: userProfile.games_won,
-              walletAddress: userProfile.wallet_address || undefined,
-              isAdmin: userProfile.is_admin,
-              status: userProfile.status,
-              createdAt: userProfile.created_at,
-              lastLogin: userProfile.last_login,
-              totalWinnings: userProfile.total_winnings || 0,
-            })
-            return
-          }
-
-          // Если ошибка входа, пробуем зарегистрировать
-          if (signInError) {
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email,
-              password,
-            })
-
-            if (signUpError) {
-              // Если пользователь уже существует, пробуем войти еще раз
-              if (
-                signUpError.message.includes("User already registered") ||
-                signUpError.message.includes("User already exists") ||
-                signUpError.message.includes("User already in use")
-              ) {
-                // Пробуем войти еще раз
-                const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
-                  email,
-                  password,
-                })
-
-                if (retryError) {
-                  throw new Error("Invalid email or password")
-                }
-
-                // Получаем профиль пользователя
-                const { data: userProfile, error: userProfileError } = await supabase
-                  .from("users")
-                  .select("*")
-                  .eq("email", email)
-                  .single()
-
-                if (userProfileError || !userProfile) {
-                  throw new Error("Failed to fetch user profile")
-                }
-
-                onLogin({
-                  id: userProfile.id,
-                  username: userProfile.username,
-                  password: "",
-                  balance: userProfile.balance,
-                  avatar: userProfile.avatar,
-                  gamesPlayed: userProfile.games_played,
-                  gamesWon: userProfile.games_won,
-                  walletAddress: userProfile.wallet_address || undefined,
-                  isAdmin: userProfile.is_admin,
-                  status: userProfile.status,
-                  createdAt: userProfile.created_at,
-                  lastLogin: userProfile.last_login,
-                  totalWinnings: userProfile.total_winnings || 0,
-                })
-                return
-              } else {
-                throw signUpError
-              }
-            }
-
-            // Успешная регистрация, создаем профиль
-            if (signUpData && signUpData.user) {
-              const { data: userProfile, error: userProfileError } = await supabase
-                .from("users")
-                .insert({
-                  id: signUpData.user.id,
-                  username: username || email.split("@")[0],
-                  email,
-                  avatar: null,
-                  balance: 0,
-                  games_played: 0,
-                  games_won: 0,
-                  wallet_address: null,
-                  is_admin: false,
-                  status: "active",
-                  created_at: new Date().toISOString(),
-                  last_login: new Date().toISOString(),
-                })
-                .select()
-                .single()
-
-              if (userProfileError) {
-                throw userProfileError
-              }
-
-              onLogin({
-                id: signUpData.user.id,
-                username: username || email.split("@")[0],
-                password: "",
-                balance: 0,
-                avatar: null,
-                gamesPlayed: 0,
-                gamesWon: 0,
-                walletAddress: undefined,
-                isAdmin: false,
-                status: "active",
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString(),
-                totalWinnings: 0,
-              })
-              return
-            }
-          }
-
-          // Если дошли до сюда, значит была другая ошибка
-          throw signInError || new Error("Unknown authentication error")
-        } catch (authError) {
-          console.error("Authentication error:", authError)
-          throw authError
+      if (existingUser) {
+        // Пользователь существует - пытаемся войти
+        // Простая проверка пароля (в реальном приложении нужна более безопасная система)
+        if (existingUser.password_hash && existingUser.password_hash !== password) {
+          throw new Error("Invalid username or password.")
         }
+
+        // Обновляем время последнего входа
+        await supabase
+          .from("users")
+          .update({ last_login: new Date().toISOString() })
+          .eq("id", existingUser.id)
+
+        onLogin({
+          id: existingUser.id,
+          username: existingUser.username,
+          password: "",
+          balance: existingUser.balance || 0,
+          avatar: existingUser.avatar,
+          gamesPlayed: existingUser.games_played || 0,
+          gamesWon: existingUser.games_won || 0,
+          walletAddress: existingUser.wallet_address,
+          isAdmin: existingUser.is_admin || false,
+          status: existingUser.status || "active",
+          createdAt: existingUser.created_at,
+          lastLogin: new Date().toISOString(),
+          totalWinnings: existingUser.total_winnings || 0,
+        })
       } else {
-        throw new Error("Please enter email and password.")
+        // Пользователь не существует - регистрируем нового
+        const newUser = {
+          id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          username,
+          password_hash: password, // В реальном приложении нужно хешировать
+          avatar: null,
+          balance: 0,
+          games_played: 0,
+          games_won: 0,
+          wallet_address: null,
+          is_admin: false,
+          status: "active",
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+          total_winnings: 0,
+        }
+
+        const { data: createdUser, error: createError } = await supabase
+          .from("users")
+          .insert(newUser)
+          .select()
+          .single()
+
+        if (createError) {
+          if (createError.message.includes("duplicate") || createError.message.includes("unique")) {
+            throw new Error("Username already exists. Please try logging in or choose a different username.")
+          }
+          throw createError
+        }
+
+        onLogin({
+          id: newUser.id,
+          username: newUser.username,
+          password: "",
+          balance: 0,
+          avatar: null,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          walletAddress: undefined,
+          isAdmin: false,
+          status: "active",
+          createdAt: newUser.created_at,
+          lastLogin: newUser.last_login,
+          totalWinnings: 0,
+        })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred.")
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value)
   }
 
   return (
@@ -288,27 +167,13 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
 
           <form onSubmit={handleLogin}>
             <div className="mb-4">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={handleEmailChange}
-                className="mt-1"
-                placeholder="Enter your email"
-                disabled={isLoading}
-                required
-              />
-            </div>
-            <div className="mb-4">
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
                 name="username"
                 type="text"
                 value={username}
-                onChange={handleUsernameChange}
+                onChange={(e) => setUsername(e.target.value)}
                 className="mt-1"
                 placeholder="Enter your username"
                 disabled={isLoading}
@@ -322,7 +187,7 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
                 id="password"
                 name="password"
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={(e) => setPassword(e.target.value)}
                 className="mt-1"
                 placeholder="Enter password"
                 required
@@ -332,7 +197,7 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
-              disabled={isLoading || (!username && !email) || !password}
+              disabled={isLoading || !username || !password}
             >
               {isLoading ? "Processing..." : "Login / Register"}
             </Button>
