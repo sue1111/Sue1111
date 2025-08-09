@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       console.log('[TELEGRAM WEBHOOK] Processing successful_payment')
       
       const payment = update.message.successful_payment
-      const userId = update.message.from.id
+      const telegramUserId = update.message.from.id
       const chargeId = payment.telegram_payment_charge_id
       const amount = payment.total_amount
 
@@ -48,8 +48,12 @@ export async function POST(request: NextRequest) {
         console.error('[TELEGRAM WEBHOOK] Failed to parse payload:', payment.invoice_payload)
       }
 
+      // Используем userId из payload, а не Telegram user ID
+      const gameUserId = payload.userId || telegramUserId.toString()
+
       console.log('[TELEGRAM WEBHOOK] Payment details:', {
-        userId,
+        telegramUserId,
+        gameUserId,
         chargeId,
         amount,
         payload
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest) {
       const { error: transactionError } = await supabaseAdmin
         .from('star_transactions')
         .insert({
-          user_id: userId.toString(),
+          user_id: gameUserId,
           telegram_payment_charge_id: chargeId,
           amount: amount,
           status: 'completed',
@@ -72,8 +76,8 @@ export async function POST(request: NextRequest) {
         console.error('[TELEGRAM WEBHOOK] Error saving transaction:', transactionError)
       }
 
-      // Обновляем баланс пользователя
-      await updateUserBalance(userId.toString(), amount)
+      // Обновляем баланс пользователя (используем game user ID)
+      await updateUserBalance(gameUserId, amount)
 
       console.log('[TELEGRAM WEBHOOK] Payment processed successfully')
     }
