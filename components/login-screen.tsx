@@ -40,92 +40,36 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
         throw new Error("Please enter username and password.")
       }
 
-      // Сначала проверяем, существует ли пользователь с таким username
-      const { data: existingUser, error: findError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("username", username)
-        .single()
+      // Используем API endpoint для авторизации/регистрации
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
 
-      if (findError && findError.code !== "PGRST116") {
-        // PGRST116 = no rows found, это нормально для регистрации
-        throw findError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Authentication failed')
       }
 
-      if (existingUser) {
-        // Пользователь существует - пытаемся войти
-        // Простая проверка пароля (в реальном приложении нужна более безопасная система)
-        if (existingUser.password && existingUser.password !== password) {
-          throw new Error("Invalid username or password.")
-        }
-
-        // Обновляем время последнего входа
-        await supabase
-          .from("users")
-          .update({ last_login: new Date().toISOString() })
-          .eq("id", existingUser.id)
-
+      if (data.success && data.user) {
         onLogin({
-          id: existingUser.id,
-          username: existingUser.username,
+          id: data.user.id,
+          username: data.user.username,
           password: "",
-          balance: existingUser.balance || 0,
-          avatar: existingUser.avatar,
-          gamesPlayed: existingUser.games_played || 0,
-          gamesWon: existingUser.games_won || 0,
-          walletAddress: existingUser.wallet_address,
-          isAdmin: existingUser.is_admin || false,
-          status: existingUser.status || "active",
-          createdAt: existingUser.created_at,
-          lastLogin: new Date().toISOString(),
-          totalWinnings: existingUser.total_winnings || 0,
-        })
-      } else {
-        // Пользователь не существует - регистрируем нового
-        const newUser = {
-          id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          username,
-          password: password, // В реальном приложении нужно хешировать
-          email: `${username}@temp.local`, // Временный email для совместимости со схемой
-          avatar: null,
-          balance: 0,
-          games_played: 0,
-          games_won: 0,
-          wallet_address: null,
-          is_admin: false,
-          status: "active",
-          created_at: new Date().toISOString(),
-          last_login: new Date().toISOString(),
-          total_winnings: 0,
-        }
-
-        const { data: createdUser, error: createError } = await supabase
-          .from("users")
-          .insert(newUser)
-          .select()
-          .single()
-
-        if (createError) {
-          if (createError.message.includes("duplicate") || createError.message.includes("unique")) {
-            throw new Error("Username already exists. Please try logging in or choose a different username.")
-          }
-          throw createError
-        }
-
-        onLogin({
-          id: newUser.id,
-          username: newUser.username,
-          password: "",
-          balance: 0,
-          avatar: null,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          walletAddress: undefined,
-          isAdmin: false,
-          status: "active",
-          createdAt: newUser.created_at,
-          lastLogin: newUser.last_login,
-          totalWinnings: 0,
+          balance: data.user.balance,
+          avatar: data.user.avatar,
+          gamesPlayed: data.user.gamesPlayed,
+          gamesWon: data.user.gamesWon,
+          walletAddress: data.user.walletAddress,
+          isAdmin: data.user.isAdmin,
+          status: data.user.status,
+          createdAt: data.user.createdAt,
+          lastLogin: data.user.lastLogin,
+          totalWinnings: data.user.totalWinnings,
         })
       }
     } catch (err) {
