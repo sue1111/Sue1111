@@ -90,7 +90,7 @@ export default function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps
     )
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 pb-20">
         {sortedPlayers.map((player, index) => (
           <Card 
             key={player.id} 
