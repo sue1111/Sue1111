@@ -55,7 +55,7 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
       if (existingUser) {
         // Пользователь существует - пытаемся войти
         // Простая проверка пароля (в реальном приложении нужна более безопасная система)
-        if (existingUser.password_hash && existingUser.password_hash !== password) {
+        if (existingUser.password && existingUser.password !== password) {
           throw new Error("Invalid username or password.")
         }
 
@@ -85,7 +85,8 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
         const newUser = {
           id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           username,
-          password_hash: password, // В реальном приложении нужно хешировать
+          password: password, // В реальном приложении нужно хешировать
+          email: `${username}@temp.local`, // Временный email для совместимости со схемой
           avatar: null,
           balance: 0,
           games_played: 0,
@@ -128,7 +129,16 @@ export default function LoginScreen({ onLogin, telegramAuthAvailable }: LoginScr
         })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred.")
+      console.error("Login error:", err)
+      let errorMessage = "An unknown error occurred."
+      
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (typeof err === 'object' && err !== null) {
+        errorMessage = JSON.stringify(err)
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
