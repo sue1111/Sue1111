@@ -127,29 +127,38 @@ export default function ProfileScreen({ userData, onNavigate, onLogout, setUserD
     fetchFreshUserData()
   }, [userData?.id, setUserData])
 
-  const createDepositNotification = async (amount: number) => {
+  const createStarsPayment = async (amount: number) => {
     setDepositSent(true)
     try {
-      const response = await fetch("/api/notifications", {
+      const response = await fetch("/api/telegram/stars", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: userData.id,
-          type: "deposit_request",
           amount: amount,
-          message: `User ${userData.username} requested a deposit verification for $${amount}. Wallet: ${walletAddress}`,
+          description: `Game balance top-up for ${userData.username}`,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to send deposit request.")
+        throw new Error("Failed to create payment link.")
       }
 
-      toast({
-        title: "Request Sent",
-        description: "Your deposit request has been sent to the administrator for review.",
-      })
-      setShowDepositModal(false)
+      const data = await response.json()
+      
+      if (data.success && data.invoiceLink) {
+        // Открываем ссылку для оплаты в новом окне
+        window.open(data.invoiceLink, '_blank')
+        
+        toast({
+          title: "Payment Link Created",
+          description: `Payment link opened. Complete payment in Telegram to add ⭐${amount} to your balance.`,
+        })
+        
+        setShowDepositModal(false)
+      } else {
+        throw new Error("Invalid response from server.")
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -413,58 +422,46 @@ export default function ProfileScreen({ userData, onNavigate, onLogout, setUserD
         </div>
       </div>
 
-      {/* Deposit Modal */}
+      {/* Telegram Stars Deposit Modal */}
       {showDepositModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <Card className="w-full max-w-sm border-0 shadow-2xl bg-white">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white">
-              <h3 className="text-lg font-semibold">Deposit USDT (TRC20)</h3>
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 text-white">
+              <h3 className="text-lg font-semibold flex items-center">
+                ⭐ Telegram Stars Deposit
+              </h3>
             </div>
             <div className="p-4">
               <div className="mb-4">
-                <p className="mb-2 text-gray-600">Send USDT to this address (TRC20 network only):</p>
-                <div className="break-all font-mono text-sm bg-gray-100 p-2 rounded border">
-                  {systemSettings.depositWalletAddress}
+                <p className="mb-2 text-gray-600">Top up your balance using Telegram Stars:</p>
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <div className="text-sm text-blue-800">
+                    <p>• Fast and secure payment</p>
+                    <p>• Instant balance update</p>
+                    <p>• 1 Star = $1 game credit</p>
+                  </div>
                 </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Minimum deposit: $10. Funds will be credited after 6 network confirmations.
-                </p>
               </div>
               <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-red-600">
-                  * Please enter YOUR wallet address (required for verification)
-                </label>
-                <Input
-                  type="text"
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
-                  placeholder="Enter YOUR TRC20 wallet address"
-                  className="font-mono text-sm"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-gray-700">Amount to Deposit (USDT)</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Amount (Stars)</label>
                 <Input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
-                  min={10}
+                  min={1}
+                  max={2500}
+                  placeholder="Enter amount of stars"
                 />
                 {amount > 0 && (
-                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="text-sm text-blue-800">
+                  <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-sm text-green-800">
                       <div className="flex justify-between">
-                        <span>Deposit amount:</span>
-                        <span>${amount.toFixed(2)}</span>
+                        <span>Stars to pay:</span>
+                        <span>⭐ {amount}</span>
                       </div>
-                      <div className="flex justify-between text-red-600">
-                        <span>Platform fee ({systemSettings.depositFee || 20}%):</span>
-                        <span>-${(amount * ((systemSettings.depositFee || 20) / 100)).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold text-green-600 border-t border-blue-300 pt-1 mt-1">
-                        <span>Will be credited:</span>
-                        <span>${(amount * (1 - (systemSettings.depositFee || 20) / 100)).toFixed(2)}</span>
+                      <div className="flex justify-between font-semibold text-green-600 border-t border-green-300 pt-1 mt-1">
+                        <span>Game balance:</span>
+                        <span>+${amount.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -479,21 +476,11 @@ export default function ProfileScreen({ userData, onNavigate, onLogout, setUserD
                   Close
                 </Button>
                 <Button
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
-                  onClick={() => {
-                    if (!walletAddress || walletAddress.length < 30) {
-                      toast({
-                        title: "Validation Error",
-                        description: "Please enter your wallet address.",
-                        variant: "destructive",
-                      })
-                      return
-                    }
-                    createDepositNotification(amount)
-                  }}
-                  disabled={depositSent}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700"
+                  onClick={() => createStarsPayment(amount)}
+                  disabled={depositSent || amount <= 0}
                 >
-                  {depositSent ? "Sending..." : "I've Sent USDT"}
+                  {depositSent ? "Creating..." : `Pay ⭐${amount}`}
                 </Button>
               </div>
             </div>
