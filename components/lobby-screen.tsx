@@ -86,9 +86,9 @@ export default function LobbyScreen({ userData, onJoinGame, onCreateGame, onBack
     onJoinGame(gameId)
   }
 
-  // Создание новой игры - переходим на главный экран
-  const handleCreateGame = () => {
-    onBack() // Возвращаемся на главный экран где есть модальное окно создания игры
+  // Создание новой игры - вызываем прямо создание игры
+  const handleCreateGame = (betAmount: number = 1) => {
+    onCreateGame(betAmount) // Создаем игру напрямую
   }
 
   // Отмена игры
@@ -177,7 +177,7 @@ export default function LobbyScreen({ userData, onJoinGame, onCreateGame, onBack
           </div>
           
           <Button 
-            onClick={handleCreateGame}
+            onClick={() => handleCreateGame(1)}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -255,7 +255,7 @@ export default function LobbyScreen({ userData, onJoinGame, onCreateGame, onBack
               <p className="text-gray-600 mb-4">
                 No games match your current filters. Try adjusting your search criteria or create a new game.
               </p>
-              <Button onClick={handleCreateGame}>
+              <Button onClick={() => handleCreateGame(1)}>
                 Create First Game
               </Button>
             </CardContent>
